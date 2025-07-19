@@ -1,0 +1,10 @@
+## Interface: 11200
+## Title: GroupFinder Enhanced
+## Notes: Advanced group finder for WoW 1.12 with instance selection, filtering, persistence, and auto-cleanup
+## Author: Enhanced by Roo
+## SavedVariables: GroupFinderDB
+## Version: 2.1
+## DefaultState: enabled
+## LoadOnDemand: 0
+GroupFinder.lua
+GroupFinder.xml
