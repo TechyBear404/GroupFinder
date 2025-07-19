@@ -122,3 +122,145 @@ Cet addon est compatible avec World of Warcraft 1.12 (Vanilla).
 - Version originale : YourName
 - Version améliorée : Enhanced by Roo
 - Compatible avec WoW 1.12 Vanilla
+
+## XML Structure Outline for Two-Panel Layout
+
+```xml
+<Frame name="GroupFinderMainFrame" parent="UIParent" toplevel="true" movable="true" enableMouse="true" hidden="false">
+  <Size>
+    <AbsDimension x="600" y="400"/>
+  </Size>
+  <Anchors>
+    <Anchor point="CENTER"/>
+  </Anchors>
+  <!-- Left Panel: Instance Type Selection -->
+  <Frame name="GroupFinderLeftPanel">
+    <Size>
+      <AbsDimension x="120" y="400"/>
+    </Size>
+    <Anchors>
+      <Anchor point="TOPLEFT"/>
+    </Anchors>
+    <!-- 4 Vertical Buttons -->
+    <Button name="GFButtonDungeon" inherits="UIPanelButtonTemplate">
+      <Size><AbsDimension x="100" y="40"/></Size>
+      <Anchors><Anchor point="TOPLEFT" x="10" y="-20"/></Anchors>
+      <Text>DUNGEON</Text>
+    </Button>
+    <Button name="GFButtonRaid" inherits="UIPanelButtonTemplate">
+      <Size><AbsDimension x="100" y="40"/></Size>
+      <Anchors><Anchor point="TOPLEFT" relativeTo="GFButtonDungeon" x="0" y="-50"/></Anchors>
+      <Text>RAID</Text>
+    </Button>
+    <Button name="GFButtonPvP" inherits="UIPanelButtonTemplate">
+      <Size><AbsDimension x="100" y="40"/></Size>
+      <Anchors><Anchor point="TOPLEFT" relativeTo="GFButtonRaid" x="0" y="-50"/></Anchors>
+      <Text>PVP</Text>
+    </Button>
+    <Button name="GFButtonOther" inherits="UIPanelButtonTemplate">
+      <Size><AbsDimension x="100" y="40"/></Size>
+      <Anchors><Anchor point="TOPLEFT" relativeTo="GFButtonPvP" x="0" y="-50"/></Anchors>
+      <Text>OTHER</Text>
+    </Button>
+  </Frame>
+  <!-- Right Panel: Dynamic Content Area -->
+  <Frame name="GroupFinderRightPanel">
+    <Size>
+      <AbsDimension x="480" y="400"/>
+    </Size>
+    <Anchors>
+      <Anchor point="TOPLEFT" relativeTo="GroupFinderLeftPanel" relativePoint="TOPRIGHT" x="0" y="0"/>
+    </Anchors>
+    <!-- Dynamic content: group list or creation form goes here -->
+    <!-- "Add Group" button at bottom -->
+    <Button name="GFButtonAddGroup" inherits="UIPanelButtonTemplate">
+      <Size><AbsDimension x="120" y="40"/></Size>
+      <Anchors>
+        <Anchor point="BOTTOMRIGHT" x="-20" y="20"/>
+      </Anchors>
+      <Text>ADD GROUP</Text>
+    </Button>
+  </Frame>
+</Frame>
+```
+
+- All panels and buttons use absolute positioning.
+- Right panel content is dynamic (group list or creation form).
+- Button and frame names are for reference; actual implementation may adjust for WoW 1.12 XML syntax.
+
+## Lua Module/Component Responsibilities and Flow
+
+**Responsibilities:**
+
+- `GroupFinder.lua` main module:
+  - Handles initialization, event registration, and frame show/hide logic.
+  - Manages state: selected type (Dungeon/Raid/PvP/Other), current group list, and form visibility.
+  - Updates right panel content based on left panel selection.
+  - Handles "Add Group" button logic and form submission.
+  - Filters group data by selected type.
+  - Preserves and integrates existing group management, chat, and debug logic.
+
+**Component Flow:**
+
+1. **Addon Load:**
+
+   - Initialize frames, set Dungeon as default selection.
+   - Register events for group updates, chat, and debug.
+
+2. **Panel Switching:**
+
+   - On left panel button click, update selected type.
+   - Call function to refresh right panel with filtered group list.
+
+3. **Group List Display:**
+
+   - Populate right panel with groups matching selected type.
+   - Show "Add Group" button at bottom.
+
+4. **Group Creation:**
+
+   - On "Add Group", show creation form filtered by type.
+   - On submit/validation, add group, refresh list, return to group list view.
+
+5. **State Management:**
+   - Maintain current selection and UI state.
+   - Ensure compatibility with WoW 1.12 event and frame APIs.
+
+**Flow Diagram:**
+
+```mermaid
+flowchart TD
+    A[Addon Loaded] --> B[Set Default Type]
+    B --> C[Register Events]
+    C --> D[User Clicks Type Button]
+    D --> E[Update Selected Type]
+    E --> F[Refresh Group List]
+    F --> G[User Clicks Add Group]
+    G --> H[Show Creation Form]
+    H --> I[Validate & Add Group]
+    I --> F
+```
+
+## Notes on Preserving Existing Features and Debug Tools
+
+- **Group Management:**
+
+  - Retain all logic for group creation, editing, deletion, and listing.
+  - Ensure new filtering and panel logic integrates with existing group data structures.
+  - Maintain compatibility with WoW 1.12 event-driven updates.
+
+- **Chat Integration:**
+
+  - Preserve all chat message handling, announcements, and group recruitment messages.
+  - Ensure chat hooks remain functional regardless of panel state.
+
+- **Debug Tools:**
+
+  - Retain all debug output, logging, and developer commands.
+  - Ensure debug UI (if any) is accessible and not hidden by new layout.
+  - Keep debug toggles and verbose output options.
+
+- **General:**
+  - Avoid breaking changes to saved variables or user settings.
+  - Test all legacy features after refactor to confirm no regressions.
+  - Use absolute positioning for new frames, but keep relative positioning where required by WoW 1.12 API.

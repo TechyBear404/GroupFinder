@@ -1,5 +1,5 @@
-<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\\FrameXML\\UI.xsd">
-    
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+
     <!-- Main GroupFinder Frame -->
     <Frame name="GroupFinderFrame" toplevel="true" frameStrata="DIALOG" movable="true" enableMouse="true" hidden="true" parent="UIParent">
         <Size>
@@ -27,7 +27,7 @@
                 </Anchors>
                 <Text>Group Finder Enhanced</Text>
             </FontString>
-            
+
             <!-- Close Button -->
             <Button name="$parentCloseButton" inherits="UIPanelCloseButton">
                 <Anchors>
@@ -44,234 +44,498 @@
                 </Scripts>
             </Button>
 
-            <!-- Filter Label -->
-            <FontString name="$parentFilterLabel" inherits="GameFontNormal">
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="20" y="-45"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Text>Filter:</Text>
-            </FontString>
-
-            <!-- Filter All Button -->
-            <Button name="$parentFilterAll" inherits="UIPanelButtonTemplate" text="All">
+            <!-- Left Panel: Category Buttons -->
+            <Frame name="$parentLeftPanel">
                 <Size>
-                    <AbsDimension x="50" y="20"/>
+                    <AbsDimension x="110" y="540"/>
                 </Size>
                 <Anchors>
                     <Anchor point="TOPLEFT">
                         <Offset>
-                            <AbsDimension x="80" y="-45"/>
+                            <AbsDimension x="15" y="-35"/>
                         </Offset>
                     </Anchor>
                 </Anchors>
-                <Scripts>
-                    <OnClick>
-                        GroupFinder_SetFilter("All");
-                    </OnClick>
-                </Scripts>
-            </Button>
-
-            <!-- Filter Dungeon Button -->
-            <Button name="$parentFilterDungeon" inherits="UIPanelButtonTemplate" text="Dungeon">
-                <Size>
-                    <AbsDimension x="65" y="20"/>
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="135" y="-45"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Scripts>
-                    <OnClick>
-                        GroupFinder_SetFilter("Dungeon");
-                    </OnClick>
-                </Scripts>
-            </Button>
-
-            <!-- Filter Raid Button -->
-            <Button name="$parentFilterRaid" inherits="UIPanelButtonTemplate" text="Raid">
-                <Size>
-                    <AbsDimension x="50" y="20"/>
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="205" y="-45"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Scripts>
-                    <OnClick>
-                        GroupFinder_SetFilter("Raid");
-                    </OnClick>
-                </Scripts>
-            </Button>
-
-            <!-- Filter PvP Button -->
-            <Button name="$parentFilterPvP" inherits="UIPanelButtonTemplate" text="PvP">
-                <Size>
-                    <AbsDimension x="45" y="20"/>
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="260" y="-45"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Scripts>
-                    <OnClick>
-                        GroupFinder_SetFilter("PvP");
-                    </OnClick>
-                </Scripts>
-            </Button>
-
-            <!-- Filter Other Button -->
-            <Button name="$parentFilterOther" inherits="UIPanelButtonTemplate" text="Other">
-                <Size>
-                    <AbsDimension x="50" y="20"/>
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="310" y="-45"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Scripts>
-                    <OnClick>
-                        GroupFinder_SetFilter("Other");
-                    </OnClick>
-                </Scripts>
-            </Button>
-
-            <!-- Group Count Display -->
-            <FontString name="$parentGroupCount" inherits="GameFontNormal">
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="20" y="-75"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Text>Groups found: 0</Text>
-            </FontString>
-
-            <!-- Create Group Button -->
-            <Button name="$parentCreateButton" inherits="UIPanelButtonTemplate" text="Create Group">
-                <Size>
-                    <AbsDimension x="90" y="22"/>
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="15" y="-100"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Scripts>
-                    <OnClick>
-                        GroupFinder_CreateGroupWindow();
-                    </OnClick>
-                </Scripts>
-            </Button>
-
-            <!-- Refresh Button -->
-            <Button name="$parentRefreshButton" inherits="UIPanelButtonTemplate" text="Refresh">
-                <Size>
-                    <AbsDimension x="70" y="22"/>
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="110" y="-100"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Scripts>
-                    <OnClick>
-                        GroupFinder_RefreshGroups();
-                        print("Group list refreshed");
-                    </OnClick>
-                </Scripts>
-            </Button>
-
-            <!-- Cleanup Button -->
-            <Button name="$parentCleanupButton" inherits="UIPanelButtonTemplate" text="Cleanup">
-                <Size>
-                    <AbsDimension x="70" y="22"/>
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="185" y="-100"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Scripts>
-                    <OnClick>
-                        CleanupExpiredGroups();
-                    </OnClick>
-                </Scripts>
-            </Button>
-
-            <!-- Clear Mine Button -->
-            <Button name="$parentClearButton" inherits="UIPanelButtonTemplate" text="Clear Mine">
-                <Size>
-                    <AbsDimension x="80" y="22"/>
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="260" y="-100"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Scripts>
-                    <OnClick>
-                        GroupFinder_ClearOwnGroups();
-                    </OnClick>
-                </Scripts>
-            </Button>
-
-            <!-- Group List Scroll Frame -->
-            <ScrollFrame name="$parentScrollFrame" inherits="UIPanelScrollFrameTemplate">
-                <Size>
-                    <AbsDimension x="430" y="400"/>
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="15" y="-140"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <ScrollChild>
-                    <Frame name="$parentList">
+                <Backdrop bgFile="Interface\DialogFrame\UI-DialogBox-Background" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+                    <BackgroundInsets>
+                        <AbsInset left="4" right="4" top="4" bottom="4"/>
+                    </BackgroundInsets>
+                    <TileSize val="16"/>
+                    <EdgeSize val="16"/>
+                </Backdrop>
+                <Frames>
+                    <Button name="$parentDungeonButton" inherits="UIPanelButtonTemplate" text="Dungeon">
                         <Size>
-                            <AbsDimension x="430" y="400"/>
+                            <AbsDimension x="90" y="40"/>
                         </Size>
-                    </Frame>
-                </ScrollChild>
-            </ScrollFrame>
+                        <Anchors>
+                            <Anchor point="TOPLEFT">
+                                <Offset>
+                                    <AbsDimension x="10" y="-10"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>
+                                GroupFinder_SetFilter("Dungeon");
+                            </OnClick>
+                        </Scripts>
+                    </Button>
+                    <Button name="$parentRaidButton" inherits="UIPanelButtonTemplate" text="Raid">
+                        <Size>
+                            <AbsDimension x="90" y="40"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT">
+                                <Offset>
+                                    <AbsDimension x="10" y="-60"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>
+                                GroupFinder_SetFilter("Raid");
+                            </OnClick>
+                        </Scripts>
+                    </Button>
+                    <Button name="$parentPvPButton" inherits="UIPanelButtonTemplate" text="PvP">
+                        <Size>
+                            <AbsDimension x="90" y="40"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT">
+                                <Offset>
+                                    <AbsDimension x="10" y="-110"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>
+                                GroupFinder_SetFilter("PvP");
+                            </OnClick>
+                        </Scripts>
+                    </Button>
+                    <Button name="$parentOtherButton" inherits="UIPanelButtonTemplate" text="Other">
+                        <Size>
+                            <AbsDimension x="90" y="40"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT">
+                                <Offset>
+                                    <AbsDimension x="10" y="-160"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>
+                                GroupFinder_SetFilter("Other");
+                            </OnClick>
+                        </Scripts>
+                    </Button>
+                </Frames>
+            </Frame>
 
-            <!-- Help Text -->
-            <FontString name="$parentHelpText" inherits="GameFontHighlightSmall">
+            <!-- Right Panel: Dynamic Content -->
+            <Frame name="$parentRightPanel">
+                <Size>
+                    <AbsDimension x="325" y="540"/>
+                </Size>
                 <Anchors>
                     <Anchor point="TOPLEFT">
                         <Offset>
-                            <AbsDimension x="20" y="-550"/>
+                            <AbsDimension x="130" y="-35"/>
                         </Offset>
                     </Anchor>
                 </Anchors>
-                <Text>Click a group to whisper the leader. Use filters to narrow your search. /gf help for commands.</Text>
-            </FontString>
+                <Backdrop bgFile="Interface\DialogFrame\UI-DialogBox-Background" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+                    <BackgroundInsets>
+                        <AbsInset left="4" right="4" top="4" bottom="4"/>
+                    </BackgroundInsets>
+                    <TileSize val="16"/>
+                    <EdgeSize val="16"/>
+                </Backdrop>
+                <Frames>
+                    <!-- List Panel -->
+                    <Frame name="$parentListPanel">
+                        <Size>
+                            <AbsDimension x="325" y="370"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT">
+                                <Offset>
+                                    <AbsDimension x="0" y="0"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Frames>
+                            <!-- Group Count Display -->
+                            <FontString name="$parentGroupCount" inherits="GameFontNormal">
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="15" y="-15"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Text>Groups found: 0</Text>
+                            </FontString>
+                            <!-- Group List Scroll Frame -->
+                            <ScrollFrame name="$parentScrollFrame">
+                                <Size>
+                                    <AbsDimension x="295" y="370"/>
+                                </Size>
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="15" y="-40"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <ScrollChild>
+                                    <Frame name="$parentList">
+                                        <Size>
+                                            <AbsDimension x="295" y="370"/>
+                                        </Size>
+                                    </Frame>
+                                </ScrollChild>
+                            </ScrollFrame>
+                        </Frames>
+                    </Frame>
+                    <!-- Create Panel -->
+                    <Frame name="$parentCreatePanel" hidden="true">
+                        <Size>
+                            <AbsDimension x="325" y="370"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT">
+                                <Offset>
+                                    <AbsDimension x="0" y="0"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Frames>
+                            <!-- Title -->
+                            <FontString name="$parentCreateTitle" inherits="GameFontNormalLarge">
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="100" y="-15"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Text>Create Group</Text>
+                            </FontString>
+                            <!-- Close Button -->
+                            <Button name="$parentCreateCloseButton" inherits="UIPanelCloseButton">
+                                <Anchors>
+                                    <Anchor point="TOPRIGHT">
+                                        <Offset>
+                                            <AbsDimension x="-10" y="-5"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Scripts>
+                                    <OnClick>
+                                        GroupFinderFrameRightPanel:Hide();
+                                    </OnClick>
+                                </Scripts>
+                            </Button>
+                            <!-- Instance Display -->
+                            <FontString name="$parentCreateInstanceDisplay" inherits="GameFontHighlight">
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="25" y="-50"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Text>The Deadmines (17-26 - Dungeon)</Text>
+                            </FontString>
+                            <!-- Select Instance Button -->
+                            <Button name="$parentCreateInstanceButton" inherits="UIPanelButtonTemplate" text="Select Instance">
+                                <Size>
+                                    <AbsDimension x="120" y="22"/>
+                                </Size>
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="205" y="-50"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Scripts>
+                                    <OnClick>
+                                        GroupFinder_ShowInstanceDropdown();
+                                    </OnClick>
+                                </Scripts>
+                            </Button>
+                            <!-- Roles Label -->
+                            <FontString name="$parentCreateRolesLabel" inherits="GameFontNormal">
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="25" y="-85"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Text>Roles Needed:</Text>
+                            </FontString>
+                            <!-- Tank Checkbox -->
+                            <CheckButton name="$parentCreateTankCheck" inherits="OptionsCheckButtonTemplate">
+                                <Size>
+                                    <AbsDimension x="20" y="20"/>
+                                </Size>
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="25" y="-110"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Scripts>
+                                    <OnLoad>
+                                        this:SetChecked(true);
+                                    </OnLoad>
+                                </Scripts>
+                            </CheckButton>
+                            <!-- Tank Label -->
+                            <FontString name="$parentCreateTankLabel" inherits="GameFontNormal">
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="50" y="-110"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Text>Tank</Text>
+                            </FontString>
+                            <!-- Healer Checkbox -->
+                            <CheckButton name="$parentCreateHealerCheck" inherits="OptionsCheckButtonTemplate">
+                                <Size>
+                                    <AbsDimension x="20" y="20"/>
+                                </Size>
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="120" y="-110"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Scripts>
+                                    <OnLoad>
+                                        this:SetChecked(true);
+                                    </OnLoad>
+                                </Scripts>
+                            </CheckButton>
+                            <!-- Healer Label -->
+                            <FontString name="$parentCreateHealerLabel" inherits="GameFontNormal">
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="145" y="-110"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Text>Healer</Text>
+                            </FontString>
+                            <!-- DPS Checkbox -->
+                            <CheckButton name="$parentCreateDPSCheck" inherits="OptionsCheckButtonTemplate">
+                                <Size>
+                                    <AbsDimension x="20" y="20"/>
+                                </Size>
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="220" y="-110"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Scripts>
+                                    <OnLoad>
+                                        this:SetChecked(true);
+                                    </OnLoad>
+                                </Scripts>
+                            </CheckButton>
+                            <!-- DPS Label -->
+                            <FontString name="$parentCreateDPSLabel" inherits="GameFontNormal">
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="245" y="-110"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Text>DPS</Text>
+                            </FontString>
+                            <!-- Description Input -->
+                            <EditBox name="$parentCreateDescription" inherits="InputBoxTemplate">
+                                <Size>
+                                    <AbsDimension x="340" y="25"/>
+                                </Size>
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="25" y="-170"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Scripts>
+                                    <OnLoad>
+                                        this:SetText("Description: e.g., Fast run, need keys");
+                                        this:SetTextColor(0.7, 0.7, 0.7, 1);
+                                    </OnLoad>
+                                    <OnEditFocusGained>
+                                        if string.find(this:GetText(), "e.g.,") then
+                                            this:SetText("");
+                                            this:SetTextColor(1, 1, 1, 1);
+                                        end
+                                    </OnEditFocusGained>
+                                    <OnEditFocusLost>
+                                        if this:GetText() == "" then
+                                            this:SetText("Description: e.g., Fast run, need keys");
+                                            this:SetTextColor(0.7, 0.7, 0.7, 1);
+                                        end
+                                    </OnEditFocusLost>
+                                    <OnEnterPressed>
+                                        GroupFinder_CreateGroup();
+                                    </OnEnterPressed>
+                                </Scripts>
+                            </EditBox>
+                            <!-- Create Button -->
+                            <Button name="$parentCreateConfirmButton" inherits="UIPanelButtonTemplate" text="Create Group">
+                                <Size>
+                                    <AbsDimension x="110" y="25"/>
+                                </Size>
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="90" y="-250"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Scripts>
+                                    <OnClick>
+                                        GroupFinder_CreateGroup();
+                                    </OnClick>
+                                </Scripts>
+                            </Button>
+                            <!-- Cancel Button -->
+                            <Button name="$parentCreateCancelButton" inherits="UIPanelButtonTemplate" text="Cancel">
+                                <Size>
+                                    <AbsDimension x="80" y="25"/>
+                                </Size>
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="220" y="-250"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Scripts>
+                                    <OnClick>
+                                        GroupFinderFrameRightPanel:Hide();
+                                    </OnClick>
+                                </Scripts>
+                            </Button>
+                        </Frames>
+                    </Frame>
+                    <!-- Current Type Display -->
+                    <FontString name="$parentCurrentTypeDisplay" inherits="GameFontNormalLarge">
+                        <Anchors>
+                            <Anchor point="TOPLEFT">
+                                <Offset>
+                                    <AbsDimension x="15" y="-5"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Text>Type: Dungeon</Text>
+                    </FontString>
+                    <!-- Refresh Button -->
+                    <Button name="$parentRefreshButton" inherits="UIPanelButtonTemplate" text="Refresh">
+                        <Size>
+                            <AbsDimension x="70" y="22"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT">
+                                <Offset>
+                                    <AbsDimension x="15" y="-40"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>
+                                GroupFinder_RefreshGroups();
+                                print("Group list refreshed");
+                            </OnClick>
+                        </Scripts>
+                    </Button>
+                    <!-- Cleanup Button -->
+                    <Button name="$parentCleanupButton" inherits="UIPanelButtonTemplate" text="Cleanup">
+                        <Size>
+                            <AbsDimension x="70" y="22"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT">
+                                <Offset>
+                                    <AbsDimension x="95" y="-40"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>
+                                CleanupExpiredGroups();
+                            </OnClick>
+                        </Scripts>
+                    </Button>
+                    <!-- Clear Mine Button -->
+                    <Button name="$parentClearButton" inherits="UIPanelButtonTemplate" text="Clear Mine">
+                        <Size>
+                            <AbsDimension x="80" y="22"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT">
+                                <Offset>
+                                    <AbsDimension x="175" y="-40"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>
+                                GroupFinder_ClearOwnGroups();
+                            </OnClick>
+                        </Scripts>
+                    </Button>
+                    <!-- Help Text -->
+                    <FontString name="$parentHelpText" inherits="GameFontHighlightSmall">
+                        <Anchors>
+                            <Anchor point="BOTTOMLEFT">
+                                <Offset>
+                                    <AbsDimension x="15" y="45"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Text>Click a group to whisper the leader. Use filters to narrow your search. /gf help for commands.</Text>
+                    </FontString>
+                    <!-- Add Group Button (context-sensitive) -->
+                    <Button name="$parentCreateButton" inherits="UIPanelButtonTemplate">
+                        <Size>
+                            <AbsDimension x="110" y="30"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="BOTTOMRIGHT">
+                                <Offset>
+                                    <AbsDimension x="-15" y="15"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>
+                                GroupFinder_CreateGroupWindow();
+                            </OnClick>
+                        </Scripts>
+                    </Button>
+                </Frames>
+            </Frame>
         </Frames>
         <Scripts>
             <OnLoad>
@@ -291,274 +555,4 @@
     </Frame>
 
     <!-- Create Group Dialog - Enhanced with checkboxes -->
-    <Frame name="GroupFinderCreateFrame" toplevel="true" frameStrata="DIALOG" movable="true" enableMouse="true" hidden="true" parent="UIParent">
-        <Size>
-            <AbsDimension x="400" y="320"/>
-        </Size>
-        <Anchors>
-            <Anchor point="CENTER"/>
-        </Anchors>
-        <Backdrop bgFile="Interface\DialogFrame\UI-DialogBox-Background" edgeFile="Interface\DialogFrame\UI-DialogBox-Border" tile="true">
-            <BackgroundInsets>
-                <AbsInset left="11" right="12" top="12" bottom="11"/>
-            </BackgroundInsets>
-            <TileSize val="32"/>
-            <EdgeSize val="32"/>
-        </Backdrop>
-        <Frames>
-            <!-- Title -->
-            <FontString name="$parentTitle" inherits="GameFontNormalLarge">
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="175" y="-15"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Text>Create Group</Text>
-            </FontString>
-            
-            <!-- Close Button -->
-            <Button name="$parentCloseButton" inherits="UIPanelCloseButton">
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="315" y="-5"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Scripts>
-                    <OnClick>
-                        GroupFinderCreateFrame:Hide();
-                    </OnClick>
-                </Scripts>
-            </Button>
-
-            <!-- Instance Display -->
-            <FontString name="$parentInstanceDisplay" inherits="GameFontHighlight">
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="25" y="-50"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Text>The Deadmines (17-26 - Dungeon)</Text>
-            </FontString>
-
-            <!-- Select Instance Button -->
-            <Button name="$parentInstanceButton" inherits="UIPanelButtonTemplate" text="Select Instance">
-                <Size>
-                    <AbsDimension x="120" y="22"/>
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="205" y="-50"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Scripts>
-                    <OnClick>
-                        GroupFinder_ShowInstanceDropdown();
-                    </OnClick>
-                </Scripts>
-            </Button>
-
-            <!-- Roles Label -->
-            <FontString name="$parentRolesLabel" inherits="GameFontNormal">
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="25" y="-85"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Text>Roles Needed:</Text>
-            </FontString>
-
-            <!-- Tank Checkbox -->
-            <CheckButton name="$parentTankCheck" inherits="OptionsCheckButtonTemplate">
-                <Size>
-                    <AbsDimension x="20" y="20"/>
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="25" y="-110"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Scripts>
-                    <OnLoad>
-                        this:SetChecked(true);
-                    </OnLoad>
-                </Scripts>
-            </CheckButton>
-
-            <!-- Tank Label -->
-            <FontString name="$parentTankLabel" inherits="GameFontNormal">
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="50" y="-110"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Text>Tank</Text>
-            </FontString>
-
-            <!-- Healer Checkbox -->
-            <CheckButton name="$parentHealerCheck" inherits="OptionsCheckButtonTemplate">
-                <Size>
-                    <AbsDimension x="20" y="20"/>
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="120" y="-110"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Scripts>
-                    <OnLoad>
-                        this:SetChecked(true);
-                    </OnLoad>
-                </Scripts>
-            </CheckButton>
-
-            <!-- Healer Label -->
-            <FontString name="$parentHealerLabel" inherits="GameFontNormal">
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="145" y="-110"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Text>Healer</Text>
-            </FontString>
-
-            <!-- DPS Checkbox -->
-            <CheckButton name="$parentDPSCheck" inherits="OptionsCheckButtonTemplate">
-                <Size>
-                    <AbsDimension x="20" y="20"/>
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="220" y="-110"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Scripts>
-                    <OnLoad>
-                        this:SetChecked(true);
-                    </OnLoad>
-                </Scripts>
-            </CheckButton>
-
-            <!-- DPS Label -->
-            <FontString name="$parentDPSLabel" inherits="GameFontNormal">
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="245" y="-110"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Text>DPS</Text>
-            </FontString>
-
-            <!-- Description Input -->
-            <EditBox name="$parentDescription" inherits="InputBoxTemplate">
-                <Size>
-                    <AbsDimension x="340" y="25"/>
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="25" y="-170"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Scripts>
-                    <OnLoad>
-                        this:SetText("Description: e.g., Fast run, need keys");
-                        this:SetTextColor(0.7, 0.7, 0.7, 1);
-                    </OnLoad>
-                    <OnEditFocusGained>
-                        if string.find(this:GetText(), "e.g.,") then
-                            this:SetText("");
-                            this:SetTextColor(1, 1, 1, 1);
-                        end
-                    </OnEditFocusGained>
-                    <OnEditFocusLost>
-                        if this:GetText() == "" then
-                            this:SetText("Description: e.g., Fast run, need keys");
-                            this:SetTextColor(0.7, 0.7, 0.7, 1);
-                        end
-                    </OnEditFocusLost>
-                    <OnEnterPressed>
-                        GroupFinder_CreateGroup();
-                    </OnEnterPressed>
-                </Scripts>
-            </EditBox>
-
-            <!-- Create Button -->
-            <Button name="$parentConfirmButton" inherits="UIPanelButtonTemplate" text="Create Group">
-                <Size>
-                    <AbsDimension x="110" y="25"/>
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="90" y="-250"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Scripts>
-                    <OnClick>
-                        GroupFinder_CreateGroup();
-                    </OnClick>
-                </Scripts>
-            </Button>
-
-            <!-- Cancel Button -->
-            <Button name="$parentCancelButton" inherits="UIPanelButtonTemplate" text="Cancel">
-                <Size>
-                    <AbsDimension x="80" y="25"/>
-                </Size>
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="220" y="-250"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Scripts>
-                    <OnClick>
-                        GroupFinderCreateFrame:Hide();
-                    </OnClick>
-                </Scripts>
-            </Button>
-        </Frames>
-        <Scripts>
-            <OnLoad>
-                this:RegisterForDrag("LeftButton");
-            </OnLoad>
-            <OnShow>
-                -- Force UI refresh when create frame becomes visible
-                if UpdateInstanceDisplay then
-                    UpdateInstanceDisplay();
-                end
-            </OnShow>
-            <OnDragStart>
-                this:StartMoving();
-            </OnDragStart>
-            <OnDragStop>
-                this:StopMovingOrSizing();
-            </OnDragStop>
-        </Scripts>
-    </Frame>
 </Ui>

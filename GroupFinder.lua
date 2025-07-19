@@ -8,6 +8,9 @@ local channelNumber = 4      -- Default to channel 4 (LFG)
 local updateTimer = 0
 local CLEANUP_INTERVAL = 300 -- 5 minutes
 local isInitialized = false
+-- New: State for left panel selection and right panel mode
+local leftPanelSelection = "Dungeon" -- "Dungeon", "Raid", "PvP", "Other"
+local rightPanelMode = "list"        -- "list" or "create"
 local currentFilter = "All"
 local selectedInstance = "The Deadmines"
 local groupEditIndex = nil
@@ -138,7 +141,13 @@ local function UpdateInstanceDisplay(retryCount)
     local prefix = "|cff00ffff[GroupFinder Debug]|r "
     retryCount = retryCount or 0
     local maxRetries = 3
-    
+
+    -- Check if the right panel create panel exists and is visible
+    if not GroupFinderFrameRightPanelCreatePanel or not GroupFinderFrameRightPanelCreatePanel:IsShown() then
+        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "UpdateInstanceDisplay() aborted: CreatePanel not visible or missing.")
+        return false
+    end
+
     -- Debug: Log the update attempt
     DEFAULT_CHAT_FRAME:AddMessage(prefix .. "UpdateInstanceDisplay() called (attempt " .. (retryCount + 1) .. ") - selectedInstance: " .. (selectedInstance or "nil"))
     
@@ -152,18 +161,18 @@ local function UpdateInstanceDisplay(retryCount)
     local instanceDisplayElement = nil
     
     -- Method 1: Direct reference
-    if GroupFinderCreateFrameInstanceDisplay then
-        instanceDisplayElement = GroupFinderCreateFrameInstanceDisplay
+    if GroupFinderFrameRightPanelCreatePanelInstanceDisplay then
+        instanceDisplayElement = GroupFinderFrameRightPanelCreatePanelInstanceDisplay
         DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Found element via direct reference")
     -- Method 2: getglobal fallback
-    elseif getglobal and getglobal("GroupFinderCreateFrameInstanceDisplay") then
-        instanceDisplayElement = getglobal("GroupFinderCreateFrameInstanceDisplay")
+    elseif getglobal and getglobal("GroupFinderFrameRightPanelCreatePanelInstanceDisplay") then
+        instanceDisplayElement = getglobal("GroupFinderFrameRightPanelCreatePanelInstanceDisplay")
         DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Found element via getglobal")
     -- Method 3: Manual traversal through frame hierarchy
-    elseif GroupFinderCreateFrame then
+    elseif GroupFinderFrameRightPanelCreatePanel then
         DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Searching for element via frame traversal...")
-        -- Check if we can find it as a child of GroupFinderCreateFrame
-        local children = { GroupFinderCreateFrame:GetChildren() }
+        -- Check if we can find it as a child of GroupFinderFrameRightPanelCreatePanel
+        local children = { GroupFinderFrameRightPanelCreatePanel:GetChildren() }
         for i, child in ipairs(children) do
             if child and child:GetObjectType() == "FontString" then
                 local childName = child:GetName()
@@ -177,7 +186,7 @@ local function UpdateInstanceDisplay(retryCount)
         
         -- Alternative: try to find by regions
         if not instanceDisplayElement then
-            local regions = { GroupFinderCreateFrame:GetRegions() }
+            local regions = { GroupFinderFrameRightPanelCreatePanel:GetRegions() }
             for i, region in ipairs(regions) do
                 if region and region:GetObjectType() == "FontString" then
                     local regionName = region:GetName()
@@ -193,7 +202,7 @@ local function UpdateInstanceDisplay(retryCount)
         -- Method 4: Find by text content (looking for default text)
         if not instanceDisplayElement then
             DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Searching by text content...")
-            local regions = { GroupFinderCreateFrame:GetRegions() }
+            local regions = { GroupFinderFrameRightPanelCreatePanel:GetRegions() }
             for i, region in ipairs(regions) do
                 if region and region:GetObjectType() == "FontString" then
                     local text = region:GetText()
@@ -219,12 +228,12 @@ local function UpdateInstanceDisplay(retryCount)
         end
         
         -- Method 5: Create element programmatically if it doesn't exist and we have the frame
-        if GroupFinderCreateFrame and retryCount == 1 then
+        if GroupFinderFrameRightPanelCreatePanel and retryCount == 1 then
             DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Attempting to create element programmatically...")
             
             local success, newElement = pcall(function()
-                local fontString = GroupFinderCreateFrame:CreateFontString("GroupFinderCreateFrameInstanceDisplay", "OVERLAY", "GameFontHighlight")
-                fontString:SetPoint("TOPLEFT", GroupFinderCreateFrame, "TOPLEFT", 25, -50)
+                local fontString = GroupFinderFrameRightPanelCreatePanel:CreateFontString("GroupFinderFrameRightPanelCreatePanelInstanceDisplay", "OVERLAY", "GameFontHighlight")
+                fontString:SetPoint("TOPLEFT", GroupFinderFrameRightPanelCreatePanel, "TOPLEFT", 25, -50)
                 fontString:SetText("The Deadmines (17-26 - Dungeon)")
                 return fontString
             end)
@@ -233,7 +242,7 @@ local function UpdateInstanceDisplay(retryCount)
                 instanceDisplayElement = newElement
                 DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Successfully created element programmatically")
                 -- Set global reference for future use
-                GroupFinderCreateFrameInstanceDisplay = newElement
+                GroupFinderFrameRightPanelCreatePanelInstanceDisplay = newElement
             else
                 DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Failed to create element programmatically")
             end
@@ -263,7 +272,7 @@ local function UpdateInstanceDisplay(retryCount)
     -- Check if element is properly accessible and the frame is shown
     local success, error = pcall(function()
         -- Verify the parent frame is shown
-        if not GroupFinderCreateFrame:IsShown() then
+        if not GroupFinderFrameRightPanelCreatePanel:IsShown() then
             DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Parent frame not shown!")
             return
         end
@@ -550,16 +559,17 @@ end
 
 -- Filter function
 local function ShouldShowGroup(group)
-    if currentFilter == "All" then
+    -- Use leftPanelSelection for filtering
+    if leftPanelSelection == "All" then
         return true
     end
 
     local instanceInfo = INSTANCES[group.activity]
     if instanceInfo then
-        return instanceInfo.type == currentFilter
+        return instanceInfo.type == leftPanelSelection
     end
 
-    return currentFilter == "Other"
+    return leftPanelSelection == "Other"
 end
 
 -- Channel management
@@ -664,14 +674,94 @@ end
 
 -- Filter functions
 function GroupFinder_SetFilter(filterType)
-    currentFilter = filterType
+    -- Deprecated: Use SetLeftPanelSelection instead
+    leftPanelSelection = filterType
+    rightPanelMode = "list"
     GroupFinder_RefreshGroups()
     PrintMessage("Filter set to: " .. filterType)
+end
+
+-- New: Set left panel selection and update right panel
+function GroupFinder_SetLeftPanelSelection(selection)
+    local debugPrefix = "|cffffff00[GF Debug]|r "
+    DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "GroupFinder_SetLeftPanelSelection called")
+    leftPanelSelection = selection or "Dungeon"
+    DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "leftPanelSelection: " .. tostring(leftPanelSelection))
+    rightPanelMode = "list"
+    -- Update the right panel type display
+    local typeDisplay = GroupFinderFrameRightPanelCurrentTypeDisplay
+    if not typeDisplay and getglobal then
+        typeDisplay = getglobal("GroupFinderFrameRightPanelCurrentTypeDisplay")
+    end
+    if typeDisplay and typeDisplay.SetText then
+        typeDisplay:SetText("Type: " .. leftPanelSelection)
+    end
+
+    -- Update the Add Group button text robustly
+    local function setAddButtonText(retryCount)
+        retryCount = retryCount or 0
+        local maxRetries = 3
+        local addButton = GroupFinderFrameRightPanelCreateButton
+        if not addButton and getglobal then
+            addButton = getglobal("GroupFinderFrameRightPanelCreateButton")
+        end
+
+        -- Explicit debug logging for button state
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[GroupFinder Debug]|r Attempting to set button text. Button exists: " .. tostring(addButton ~= nil))
+        if addButton then
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[GroupFinder Debug]|r Button type: " .. tostring(addButton:GetObjectType()))
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[GroupFinder Debug]|r Button visible: " .. tostring(addButton:IsVisible()))
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[GroupFinder Debug]|r Button enabled: " .. tostring(addButton:IsEnabled()))
+        end
+        local desiredText = "Add " .. tostring(leftPanelSelection) .. " Group"
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[GroupFinder Debug]|r Desired button text: '" .. (desiredText or "nil") .. "'")
+
+        if addButton and addButton.SetText then
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[GroupFinder Debug]|r Calling SetText on button")
+            addButton:SetText(desiredText)
+            if addButton and addButton.GetFontString and addButton:GetFontString() then
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[GroupFinder Debug]|r Button FontString text after SetText: '" .. (addButton:GetFontString():GetText() or "nil") .. "'")
+            end
+        elseif retryCount < maxRetries then
+            local retryFrame = CreateFrame("Frame")
+            local retryTimer = 0
+            retryFrame:SetScript("OnUpdate", function()
+                retryTimer = retryTimer + arg1
+                if retryTimer >= 0.1 then
+                    retryFrame:SetScript("OnUpdate", nil)
+                    setAddButtonText(retryCount + 1)
+                end
+            end)
+        else
+            local prefix = "|cffff0000[GroupFinder Error]|r "
+            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Add Group button not found after retries")
+        end
+    end
+    setAddButtonText()
+
+    GroupFinder_RefreshGroups()
+    if GroupFinder_UpdateRightPanel then
+        GroupFinder_UpdateRightPanel()
+    end
 end
 
 -- UI Management
 function GroupFinder_RefreshGroups()
     if not isInitialized then
+        return
+    end
+
+    -- Only show group list if rightPanelMode is "list"
+    if rightPanelMode ~= "list" then
+        -- Hide all group buttons if not in list mode
+        for _, button in ipairs(groupButtons) do
+            button:Hide()
+            button:SetParent(nil)
+        end
+        groupButtons = {}
+        if GroupFinderFrameGroupCount then
+            GroupFinderFrameGroupCount:SetText("")
+        end
         return
     end
 
@@ -683,7 +773,7 @@ function GroupFinder_RefreshGroups()
     groupButtons = {}
 
     -- Get scroll frame
-    local scrollFrame = GroupFinderFrameScrollFrameList
+    local scrollFrame = GroupFinderFrameRightPanelListPanelScrollFrame
     if not scrollFrame then
         PrintMessage("Error: ScrollFrame not found", true)
         return
@@ -696,19 +786,18 @@ function GroupFinder_RefreshGroups()
 
     for i, group in ipairs(GroupFinderDB.groups) do
         if ShouldShowGroup(group) then
-            -- Get instance info first (fixes line 453 error)
+            -- [Unchanged: group button creation logic]
+            -- ... (same as before)
             local instanceInfo = INSTANCES[group.activity]
             local timeAgo = math.floor((GetTimeStamp() - group.timestamp) / 60)
             local timeText = timeAgo < 1 and "now" or timeAgo .. "m ago"
             local levelText = instanceInfo and ("(" .. instanceInfo.level .. ")") or ""
 
-            -- Create simple button without WoW template
             local button = CreateFrame("Button", "GroupFinderButton" .. i, scrollFrame)
             button:SetWidth(340)
             button:SetHeight(30)
             button:SetPoint("TOPLEFT", 5, -offset)
 
-            -- Simple background
             button:SetBackdrop({
                 bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
                 edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -720,8 +809,6 @@ function GroupFinder_RefreshGroups()
             button:SetBackdropColor(0.2, 0.2, 0.2, 0.8)
             button:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
 
-            -- Format button text with instance info
-
             local buttonText = string.format("%s %s\n%s - %s (%s)",
                 group.activity,
                 levelText,
@@ -730,15 +817,12 @@ function GroupFinder_RefreshGroups()
                 timeText
             )
 
-            -- Create text manually instead of SetText
             local text = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
             text:SetPoint("LEFT", button, "LEFT", 5, 0)
             text:SetText(buttonText)
             text:SetJustifyH("LEFT")
 
-            -- Add Edit/Delete buttons for own groups
             if group.leader == UnitName("player") then
-                -- Edit Button
                 local editBtn = CreateFrame("Button", nil, button)
                 editBtn:SetWidth(35)
                 editBtn:SetHeight(15)
@@ -759,7 +843,6 @@ function GroupFinder_RefreshGroups()
                 editText:SetText("Edit")
                 editText:SetTextColor(1, 1, 1, 1)
 
-                -- Store the group data locally for the closure
                 local groupLeader = group.leader
                 local groupActivity = group.activity
                 local groupTimestamp = group.timestamp
@@ -767,7 +850,6 @@ function GroupFinder_RefreshGroups()
                 local groupDescription = group.description
 
                 editBtn:SetScript("OnClick", function()
-                    -- Find the group by matching stored data
                     local currentIndex = nil
                     for idx, g in ipairs(GroupFinderDB.groups) do
                         if g and g.leader == groupLeader and g.activity == groupActivity and g.timestamp == groupTimestamp then
@@ -783,7 +865,6 @@ function GroupFinder_RefreshGroups()
                     end
                 end)
 
-                -- Delete Button
                 local delBtn = CreateFrame("Button", nil, button)
                 delBtn:SetWidth(35)
                 delBtn:SetHeight(15)
@@ -805,7 +886,6 @@ function GroupFinder_RefreshGroups()
                 delText:SetTextColor(1, 1, 1, 1)
 
                 delBtn:SetScript("OnClick", function()
-                    -- Find the group by matching stored data
                     local currentIndex = nil
                     for idx, g in ipairs(GroupFinderDB.groups) do
                         if g and g.leader == groupLeader and g.activity == groupActivity and g.timestamp == groupTimestamp then
@@ -821,13 +901,11 @@ function GroupFinder_RefreshGroups()
                     end
                 end)
 
-                -- Set button click handler for own groups
                 button:SetScript("OnClick", function()
                     local prefix = "|cff00ff00[GroupFinder]|r "
                     DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Use Edit/Delete buttons to manage your group")
                 end)
             else
-                -- Set button click handler for other groups
                 button:SetScript("OnClick", function()
                     local message = string.format("Hi! I'd like to join your group for %s. My roles: %s",
                         group.activity,
@@ -839,34 +917,26 @@ function GroupFinder_RefreshGroups()
                 end)
             end
 
-            -- Hover effects
             button:SetScript("OnEnter", function()
                 button:SetBackdropColor(0.4, 0.4, 0.4, 0.9)
-
-                -- Tooltip with nil checks
                 if GameTooltip then
                     GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
                     if group and group.activity then
                         GameTooltip:SetText(group.activity, 1, 1, 0, 1)
                         GameTooltip:AddLine("Leader: " .. (group.leader or "Unknown"), 1, 1, 1, 1)
                         GameTooltip:AddLine("Roles: " .. (group.roles or "Not specified"), 0.8, 0.8, 0.8, 1)
-
                         local currentInstanceInfo = INSTANCES[group.activity]
                         if currentInstanceInfo then
                             GameTooltip:AddLine("Level: " .. currentInstanceInfo.level, 0.8, 0.8, 0.8, 1)
                             GameTooltip:AddLine("Type: " .. currentInstanceInfo.type, 0.8, 0.8, 0.8, 1)
                             GameTooltip:AddLine("Zone: " .. currentInstanceInfo.zone, 0.6, 0.6, 0.6, 1)
                         end
-
                         if group.description and group.description ~= "" then
                             GameTooltip:AddLine("Description: " .. group.description, 0.6, 0.6, 0.6, 1)
                         end
-
                         local currentTimeAgo = math.floor((GetTimeStamp() - (group.timestamp or 0)) / 60)
                         local currentTimeText = currentTimeAgo < 1 and "now" or currentTimeAgo .. "m ago"
                         GameTooltip:AddLine("Posted: " .. currentTimeText, 0.5, 0.5, 0.5, 1)
-
-                        -- Different instructions based on ownership
                         if group.leader == UnitName("player") then
                             GameTooltip:AddLine("Left-click Edit, Right-click Delete", 0, 1, 0, 1)
                         else
@@ -888,74 +958,156 @@ function GroupFinder_RefreshGroups()
         end
     end
 
-    -- Update scroll frame content size
     scrollFrame:SetHeight(math.max(offset, 400))
 
-    -- Update group count display
     if GroupFinderFrameGroupCount then
         local totalGroups = table.getn(GroupFinderDB.groups)
-        if currentFilter == "All" then
+        if leftPanelSelection == "All" then
             GroupFinderFrameGroupCount:SetText("Groups found: " .. totalGroups)
         else
             GroupFinderFrameGroupCount:SetText("Groups found: " ..
-                visibleGroups .. "/" .. totalGroups .. " (filtered: " .. currentFilter .. ")")
+                visibleGroups .. "/" .. totalGroups .. " (filtered: " .. leftPanelSelection .. ")")
         end
     end
 end
 
--- Enhanced GroupFinder_CreateGroupWindow with proper timing and delayed UI updates
-function GroupFinder_CreateGroupWindow()
-    local prefix = "|cff00ffff[GroupFinder Debug]|r "
-    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "GroupFinder_CreateGroupWindow() called")
-    
-    -- Validate frame exists
-    if not GroupFinderCreateFrame then
-        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "ERROR: GroupFinderCreateFrame is nil!")
-        return
+-- New: Update right panel content based on mode
+function GroupFinder_UpdateRightPanel()
+    -- List of group creation UI elements in GroupFinderFrameRightPanel
+    local creationElements = {
+        GroupFinderFrameRightPanelCreateTitle,
+        GroupFinderFrameRightPanelInstanceDisplay,
+        GroupFinderFrameRightPanelInstanceButton,
+        GroupFinderFrameRightPanelTankCheck,
+        GroupFinderFrameRightPanelHealerCheck,
+        GroupFinderFrameRightPanelDPSCheck,
+        GroupFinderFrameRightPanelDescription,
+        GroupFinderFrameRightPanelCreateButton,
+        GroupFinderFrameRightPanelCancelButton
+    }
+
+    if rightPanelMode == "create" then
+        if GroupFinderFrameRightPanelListPanel then GroupFinderFrameRightPanelListPanel:Hide() end
+        if GroupFinderFrameRightPanelCreatePanel then GroupFinderFrameRightPanelCreatePanel:Show() end
+    else
+        if GroupFinderFrameRightPanelListPanel then GroupFinderFrameRightPanelListPanel:Show() end
+        if GroupFinderFrameRightPanelCreatePanel then GroupFinderFrameRightPanelCreatePanel:Hide() end
     end
-    
-    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Showing GroupFinderCreateFrame...")
-    GroupFinderCreateFrame:Show()
-    
-    -- Run debug listing immediately after showing frame to see what's available
-    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Running immediate debug check after Show()...")
-    DebugListFrameElements()
-    
-    -- Use delayed update mechanism to ensure UI elements are ready
-    -- This is crucial for WoW 1.12 where UI elements may not be immediately accessible after Show()
-    local delayFrame = CreateFrame("Frame")
-    local delayTimer = 0
-    
-    delayFrame:SetScript("OnUpdate", function()
-        delayTimer = delayTimer + arg1
-        
-        -- First attempt at 0.05 seconds
-        if delayTimer >= 0.05 then
-            delayFrame:SetScript("OnUpdate", nil)
-            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Attempting delayed UI update...")
-            
-            local updateSuccess = UpdateInstanceDisplay()
-            if not updateSuccess then
-                -- If first attempt fails, schedule another attempt
-                DEFAULT_CHAT_FRAME:AddMessage(prefix .. "First delayed attempt failed, scheduling second attempt...")
-                
-                local secondDelayFrame = CreateFrame("Frame")
-                local secondDelayTimer = 0
-                
-                secondDelayFrame:SetScript("OnUpdate", function()
-                    secondDelayTimer = secondDelayTimer + arg1
-                    
-                    if secondDelayTimer >= 0.1 then
-                        secondDelayFrame:SetScript("OnUpdate", nil)
-                        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Second delayed attempt...")
-                        UpdateInstanceDisplay()
-                    end
-                end)
-            else
-                DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Delayed UI update successful!")
+end
+
+-- New: Context-sensitive Add Group button handler
+function GroupFinder_OnAddGroupButton()
+    local debugPrefix = "|cffffff00[GF Debug]|r "
+    DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "GroupFinder_OnAddGroupButton called")
+    DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "leftPanelSelection: " .. tostring(leftPanelSelection))
+    -- Update the Add Group button text in case this is called directly
+    -- Update the Add Group button text robustly
+    local function setAddButtonText(retryCount)
+        retryCount = retryCount or 0
+        local maxRetries = 3
+        local addButton = GroupFinderFrameRightPanelCreateButton
+        if not addButton and getglobal then
+            addButton = getglobal("GroupFinderFrameRightPanelCreateButton")
+        end
+
+        -- Explicit debug logging for button state
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[GroupFinder Debug]|r Attempting to set button text. Button exists: " .. tostring(addButton ~= nil))
+        if addButton then
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[GroupFinder Debug]|r Button type: " .. tostring(addButton:GetObjectType()))
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[GroupFinder Debug]|r Button visible: " .. tostring(addButton:IsVisible()))
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[GroupFinder Debug]|r Button enabled: " .. tostring(addButton:IsEnabled()))
+        end
+        local desiredText = "Add " .. tostring(leftPanelSelection) .. " Group"
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[GroupFinder Debug]|r Desired button text: '" .. (desiredText or "nil") .. "'")
+
+        if addButton and addButton.SetText then
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[GroupFinder Debug]|r Calling SetText on button")
+            addButton:SetText(desiredText)
+            if addButton and addButton.GetFontString and addButton:GetFontString() then
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[GroupFinder Debug]|r Button FontString text after SetText: '" .. (addButton:GetFontString():GetText() or "nil") .. "'")
+            end
+        elseif retryCount < maxRetries then
+            local retryFrame = CreateFrame("Frame")
+            local retryTimer = 0
+            retryFrame:SetScript("OnUpdate", function()
+                retryTimer = retryTimer + arg1
+                if retryTimer >= 0.1 then
+                    retryFrame:SetScript("OnUpdate", nil)
+                    setAddButtonText(retryCount + 1)
+                end
+            end)
+        else
+            local prefix = "|cffff0000[GroupFinder Error]|r "
+            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Add Group button not found after retries")
+        end
+    end
+    setAddButtonText()
+
+    rightPanelMode = "create"
+    -- Set default instance for creation form based on leftPanelSelection
+    local found = false
+    for name, info in pairs(INSTANCES) do
+        if info.type == leftPanelSelection then
+            selectedInstance = name
+            found = true
+            break
+        end
+    end
+    if not found then
+        selectedInstance = "The Deadmines"
+    end
+    if GroupFinder_UpdateRightPanel then GroupFinder_UpdateRightPanel() end
+    if UpdateInstanceDisplay then UpdateInstanceDisplay() end
+end
+
+-- New: Filtered instance list for creation form
+function GroupFinder_GetFilteredInstanceList()
+    local list = {}
+    if leftPanelSelection == "All" then
+        for name, _ in pairs(INSTANCES) do
+            table.insert(list, name)
+        end
+    elseif leftPanelSelection == "Other" then
+        for name, info in pairs(INSTANCES) do
+            if info.type == "Other" then
+                table.insert(list, name)
             end
         end
-    end)
+    else
+        for name, info in pairs(INSTANCES) do
+            if info.type == leftPanelSelection then
+                table.insert(list, name)
+            end
+        end
+    end
+    table.sort(list, function(a, b) return a < b end)
+    return list
+end
+
+-- Enhanced GroupFinder_CreateGroupWindow with proper timing and delayed UI updates
+function GroupFinder_CreateGroupWindow()
+    -- Context-sensitive: open creation form for current leftPanelSelection
+    rightPanelMode = "create"
+
+    local prefix = "|cff00ffff[GroupFinder Debug]|r "
+    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "GroupFinder_CreateGroupWindow() called (context: " .. leftPanelSelection .. ")")
+
+    -- Set default instance for creation form based on leftPanelSelection
+    local found = false
+    for name, info in pairs(INSTANCES) do
+        if info.type == leftPanelSelection then
+            selectedInstance = name
+            found = true
+            break
+        end
+    end
+    if not found then
+        selectedInstance = "The Deadmines"
+    end
+
+    -- Update right panel and then update instance display
+    if GroupFinder_UpdateRightPanel then GroupFinder_UpdateRightPanel() end
+    if UpdateInstanceDisplay then UpdateInstanceDisplay() end
 end
 
 -- Edit and Delete functions for own groups
@@ -980,6 +1132,7 @@ function GroupFinder_EditGroup(group, index)
     end
 
     selectedInstance = actualGroup.activity or "The Deadmines"
+    rightPanelMode = "create"
     
     -- Parse roles and set checkboxes
     local roles = actualGroup.roles or ""
@@ -1002,9 +1155,8 @@ function GroupFinder_EditGroup(group, index)
     end
 
     groupEditIndex = index
-    GroupFinderCreateFrame:Show()
-    -- Update display after frame is shown
-    UpdateInstanceDisplay()
+    if GroupFinder_UpdateRightPanel then GroupFinder_UpdateRightPanel() end
+    if UpdateInstanceDisplay then UpdateInstanceDisplay() end
     
     local prefix = "|cff00ff00[GroupFinder]|r "
     DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Editing your group. Modify and click Create Group to update.")
@@ -1130,6 +1282,16 @@ function GroupFinder_CreateGroup()
     end
 end
 
+-- After successful group creation, return to updated group list for selected type
+local _original_GroupFinder_CreateGroup = GroupFinder_CreateGroup
+function GroupFinder_CreateGroup()
+    _original_GroupFinder_CreateGroup()
+    -- After creation, switch back to list mode and refresh
+    rightPanelMode = "list"
+    if GroupFinder_UpdateRightPanel then GroupFinder_UpdateRightPanel() end
+    GroupFinder_RefreshGroups()
+end
+
 function GroupFinder_ClearOwnGroups()
     if not isInitialized then
         PrintMessage("GroupFinder not initialized", true)
@@ -1224,6 +1386,13 @@ end
 function GroupFinder_OnLoad(self)
     -- Early initialization attempt
     InitializeDB()
+
+    -- Debug: Confirm Add Group button existence after load
+    if GroupFinderFrameRightPanelCreateButton then
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[GroupFinder Debug]|r OnLoad: GroupFinderFrameRightPanelCreateButton exists. Type: " .. tostring(GroupFinderFrameRightPanelCreateButton:GetObjectType()))
+    else
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[GroupFinder Debug]|r OnLoad: GroupFinderFrameRightPanelCreateButton is nil")
+    end
 
     -- Register events
     self:RegisterEvent("CHAT_MSG_CHANNEL")
