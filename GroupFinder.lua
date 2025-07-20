@@ -2,20 +2,37 @@
 -- Enhanced version with dynamic panel UI system, instance selection, filtering, and improved compatibility
 
 -- Local variables
-local LFG_CHANNEL_NAME = "LookingForGroup"
 local groupButtons = {}
-local channelNumber = 4      -- Default to channel 4 (LFG)
 local updateTimer = 0
 local CLEANUP_INTERVAL = 300 -- 5 minutes
 local isInitialized = false
 local selectedInstance = "The Deadmines"
 local groupEditIndex = nil
 
+-- Channel-based communication system variables
+local GROUPFINDER_CHANNEL = 'TurtleGroupFinder'
+-- local channelIndex = 0
+local channelJoinAttempts = 0
+local MAX_CHANNEL_JOIN_ATTEMPTS = 5
+
+-- Auto-broadcasting system variables
+local AUTO_BROADCAST_INTERVAL = 60 -- 60 seconds
+local STALE_GROUP_TIMEOUT = 300 -- Groups not broadcast in 60 seconds are considered stale
+local autoBroadcastTimer = 0
+
 -- Dynamic Panel System Variables
 local currentView = "list"  -- "list" or "create"
 local currentInstanceType = "All"  -- Current selected instance type filter (unified with legacy currentFilter)
 local selectedTypeButtons = {}  -- Track which type button is selected
 local panelFrames = {}  -- Cache for panel frames
+
+-- Filtering variables
+local searchText = ""  -- Current search filter text
+local roleFilters = {  -- Current role filter states
+    tank = false,
+    healer = false,
+    dps = false
+}
 
 -- Frame Pooling for Memory Optimization
 local framePool = {
@@ -74,6 +91,57 @@ local INSTANCES = {
     ["Other"] = { level = "Any", type = "Other", zone = "Various" }
 }
 
+-- Channel Management Functions
+local function JoinGroupFinderChannel()
+    if channelIndex > 0 then
+        return true -- Already joined
+    end
+    
+    if channelJoinAttempts >= MAX_CHANNEL_JOIN_ATTEMPTS then
+        return false -- Too many attempts
+    end
+    
+    channelJoinAttempts = channelJoinAttempts + 1
+    
+    -- Join the channel
+    JoinChannelByName(GROUPFINDER_CHANNEL)
+    
+    -- Find channel index
+    local channels = { GetChannelList() }
+    for i = 1, table.getn(channels), 3 do
+        if channels[i + 1] == GROUPFINDER_CHANNEL then
+            channelIndex = channels[i]
+            local prefix = "|cff00ff00[TurtleGroupFinder]|r "
+            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Joined channel '" .. GROUPFINDER_CHANNEL .. "' (index: " .. channelIndex .. ")")
+            return true
+        end
+    end
+    
+    return false
+end
+
+local function GetChannelIndex()
+    if channelIndex > 0 then
+        return channelIndex
+    end
+    
+    -- Try to find the channel index
+    local channels = { GetChannelList() }
+    for i = 1, table.getn(channels), 3 do
+        if channels[i + 1] == GROUPFINDER_CHANNEL then
+            channelIndex = channels[i]
+            return channelIndex
+        end
+    end
+    
+    -- Channel not found, try to join
+    if JoinGroupFinderChannel() then
+        return channelIndex
+    end
+    
+    return 0
+end
+
 -- Get sorted list of instances
 local function GetInstanceList()
     local list = {}
@@ -84,15 +152,30 @@ local function GetInstanceList()
     return list
 end
 
--- Get filtered list of instances by type
+-- Get filtered list of instances by type (maintains INSTANCES table order)
 local function GetInstanceListByType(instanceType)
     local list = {}
-    for instance, data in pairs(INSTANCES) do
-        if instanceType == "All" or data.type == instanceType then
+    -- Create ordered list based on INSTANCES table definition order
+    local orderedInstances = {
+        -- Dungeons by level
+        "Ragefire Chasm", "The Deadmines", "Wailing Caverns", "Shadowfang Keep", "The Stockade",
+        "Gnomeregan", "Razorfen Kraul", "Scarlet Monastery", "Razorfen Downs", "Uldaman",
+        "Zul'Farrak", "Maraudon", "Temple of Atal'Hakkar", "Blackrock Depths",
+        "Lower Blackrock Spire", "Upper Blackrock Spire", "Dire Maul", "Stratholme", "Scholomance",
+        -- Raids
+        "Molten Core", "Blackwing Lair", "Zul'Gurub", "Ahn'Qiraj Temple", "Ruins of Ahn'Qiraj", "Naxxramas",
+        -- PvP Battlegrounds
+        "Warsong Gulch", "Arathi Basin", "Alterac Valley",
+        -- Other activities
+        "PvP", "Other"
+    }
+    
+    for _, instance in ipairs(orderedInstances) do
+        local data = INSTANCES[instance]
+        if data and (instanceType == "All" or data.type == instanceType) then
             table.insert(list, instance)
         end
     end
-    table.sort(list, function(a, b) return a < b end)
     return list
 end
 
@@ -194,6 +277,21 @@ function GroupFinder_SetInstanceType(instanceType)
     
     UpdateTypeButtonStates()
     
+    -- Clear input focus when changing types
+    GroupFinder_ClearAllInputFocus()
+    
+    -- Always update the selected instance when switching types
+    if instanceType == "Questing" then
+        selectedInstance = "Questing"
+    elseif instanceType == "Other" then
+        selectedInstance = "Other Activity"
+    else
+        local filteredInstances = GetInstanceListByType(instanceType)
+        if filteredInstances and table.getn(filteredInstances) > 0 then
+            selectedInstance = filteredInstances[1]
+        end
+    end
+    
     -- If we're in list view, refresh the groups
     if currentView == "list" then
         GroupFinder_RefreshGroups()
@@ -201,17 +299,6 @@ function GroupFinder_SetInstanceType(instanceType)
     
     -- Update create view if it's showing
     if currentView == "create" then
-        -- Set default instance based on current filter
-        if instanceType == "Questing" then
-            selectedInstance = "Questing"
-        elseif instanceType == "Other" then
-            selectedInstance = "Other Activity"
-        else
-            local filteredInstances = GetInstanceListByType(instanceType)
-            if filteredInstances and table.getn(filteredInstances) > 0 then
-                selectedInstance = filteredInstances[1]
-            end
-        end
         GroupFinder_UpdateCreateViewInstanceDisplay()
     end
     
@@ -228,6 +315,24 @@ function GroupFinder_ShowCreateView()
     ShowCreateView()
 end
 
+-- Focus management functions
+function GroupFinder_ClearAllInputFocus()
+    -- Clear focus from all input fields
+    local inputs = {
+        GroupFinderFrameRightPanelListViewSearchInput,
+        GroupFinderFrameRightPanelCreateViewDescription,
+        GroupFinderFrameRightPanelCreateViewMinLevelInput,
+        GroupFinderFrameRightPanelCreateViewVoiceChatInput,
+        GroupFinderCreateFrameDescription
+    }
+    
+    for _, input in ipairs(inputs) do
+        if input and input.ClearFocus then
+            input:ClearFocus()
+        end
+    end
+end
+
 -- Main frame initialization for new panel system
 function GroupFinder_OnShow()
     if not InitializePanelFrames() then
@@ -242,6 +347,9 @@ function GroupFinder_OnShow()
     
     UpdateTypeButtonStates()
     ShowListView()
+    
+    -- Clear any input focus when opening the addon
+    GroupFinder_ClearAllInputFocus()
 end
 
 -- Frame Pooling Functions for Memory Optimization
@@ -369,7 +477,7 @@ function GroupFinder_UpdateCreateViewInstanceDisplay()
             local instanceInfo = INSTANCES[selectedInstance]
             local displayText
             if instanceInfo then
-                displayText = selectedInstance .. " (" .. instanceInfo.level .. " - " .. instanceInfo.type .. ")"
+                displayText = selectedInstance .. " (" .. instanceInfo.level ..  ")"
             else
                 displayText = selectedInstance or "The Deadmines"
             end
@@ -472,7 +580,7 @@ function GroupFinder_CycleInstance()
     local instanceInfo = INSTANCES[selectedInstance]
     local userPrefix = "|cff00ff00[GroupFinder]|r "
     if instanceInfo then
-        DEFAULT_CHAT_FRAME:AddMessage(userPrefix .. "Selected: " .. selectedInstance .. " (" .. instanceInfo.level .. " - " .. instanceInfo.type .. ")")
+        DEFAULT_CHAT_FRAME:AddMessage(userPrefix .. "Selected: " .. selectedInstance .. " (" .. instanceInfo.level .. ")")
     else
         DEFAULT_CHAT_FRAME:AddMessage(userPrefix .. "Selected: " .. selectedInstance)
     end
@@ -556,7 +664,7 @@ function GroupFinder_ShowInstanceDropdown()
             local instanceInfo = INSTANCES[instance]
             local displayText = instance
             if instanceInfo then
-                displayText = instance .. " (" .. instanceInfo.level .. " - " .. instanceInfo.type .. ")"
+                displayText = instance .. " (" .. instanceInfo.level .. ")"
             end
             
             local buttonText = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -645,6 +753,47 @@ local function StringTrim(s)
     return string.gsub(s, "^%s*(.-)%s*$", "%1")
 end
 
+-- Comprehensive string sanitization for chat messages to prevent escape code errors
+local function SanitizeForChat(text)
+    if not text or text == "" then
+        return ""
+    end
+    
+    -- Convert to string if not already
+    text = tostring(text)
+    
+    -- Remove or replace problematic characters that can cause escape code errors
+    -- 1. Remove pipe characters (|) as they're used as delimiters in TGF format
+    text = string.gsub(text, "|", "")
+    
+    -- 2. Remove backslashes (\) that can create invalid escape sequences
+    text = string.gsub(text, "\\", "")
+    
+    -- 3. Remove or replace quotes that can break message parsing
+    text = string.gsub(text, "\"", "'")
+    text = string.gsub(text, "`", "'")
+    
+    -- 4. Remove control characters (newlines, tabs, etc.) that can cause issues
+    text = string.gsub(text, "[\n\r\t\f\v]", " ")
+    
+    -- 5. Remove other potentially problematic characters
+    text = string.gsub(text, "[\001-\031]", "") -- Remove ASCII control characters
+    text = string.gsub(text, "[\127-\159]", "") -- Remove extended control characters
+    
+    -- 6. Replace multiple spaces with single space
+    text = string.gsub(text, "%s+", " ")
+    
+    -- 7. Trim whitespace
+    text = StringTrim(text)
+    
+    -- 8. Limit length to prevent overly long messages
+    if string.len(text) > 200 then
+        text = string.sub(text, 1, 197) .. "..."
+    end
+    
+    return text
+end
+
 local function ValidateInput(text, fieldName)
     if not text or string.len(StringTrim(text)) == 0 then
         return false, fieldName .. " cannot be empty"
@@ -660,57 +809,122 @@ local function PrintMessage(message, isError)
     DEFAULT_CHAT_FRAME:AddMessage(prefix .. message)
 end
 
--- Filter function
+-- Filter function with enhanced filtering capabilities
 local function ShouldShowGroup(group)
-    if currentInstanceType == "All" then
-        return true
-    end
-
-    local instanceInfo = INSTANCES[group.activity]
-    if instanceInfo then
-        return instanceInfo.type == currentInstanceType
-    end
-
-    return currentInstanceType == "Other"
-end
-
--- Channel management
-local function FindLFGChannel()
-    local channels = { GetChannelList() }
-    for i = 1, table.getn(channels), 3 do
-        local channelName = channels[i + 1]
-        if channelName == LFG_CHANNEL_NAME or channelName == "LFG" then
-            channelNumber = channels[i]
-            return channelNumber
+    -- Instance type filter
+    if currentInstanceType ~= "All" then
+        local instanceInfo = INSTANCES[group.activity]
+        if instanceInfo then
+            -- Map UI filter types to instance types correctly
+            local filterToInstanceType = {
+                ["Dungeon"] = "Dungeon",
+                ["Dungeons"] = "Dungeon",  -- Support both singular and plural
+                ["Raid"] = "Raid",
+                ["Raids"] = "Raid",        -- Support both singular and plural
+                ["PvP"] = "PvP",
+                ["Questing"] = "Questing",
+                ["Other"] = "Other"
+            }
+            
+            local expectedInstanceType = filterToInstanceType[currentInstanceType] or currentInstanceType
+            if instanceInfo.type ~= expectedInstanceType then
+                return false
+            end
+        else
+            if currentInstanceType ~= "Other" then
+                return false
+            end
         end
     end
-    return nil
+    
+    -- Search text filter (case-insensitive instance name matching)
+    if searchText and searchText ~= "" then
+        local activityLower = string.lower(group.activity or "")
+        local searchLower = string.lower(searchText)
+        if not string.find(activityLower, searchLower) then
+            return false
+        end
+    end
+    
+    -- Role filter (if any role filters are active)
+    if roleFilters.tank or roleFilters.healer or roleFilters.dps then
+        local roles = string.lower(group.roles or "")
+        local matchesRole = false
+        
+        if roleFilters.tank and string.find(roles, "tank") then
+            matchesRole = true
+        end
+        if roleFilters.healer and string.find(roles, "healer") then
+            matchesRole = true
+        end
+        if roleFilters.dps and string.find(roles, "dps") then
+            matchesRole = true
+        end
+        
+        if not matchesRole then
+            return false
+        end
+    end
+    
+    return true
 end
 
-local function JoinLFGChannel()
-    -- Try to find existing LFG channel
-    local foundChannel = FindLFGChannel()
-    if foundChannel then
-        channelNumber = foundChannel
-        PrintMessage("Found LFG channel (ID: " .. foundChannel .. ")")
-        return true
+-- Filter callback functions
+function GroupFinder_OnSearchTextChanged()
+    local searchInput = GroupFinderFrameRightPanelListViewSearchInput
+    if searchInput then
+        searchText = searchInput:GetText() or ""
+        GroupFinder_RefreshGroups()
     end
+end
 
-    -- Try to join by name
-    local channel = JoinChannelByName(LFG_CHANNEL_NAME)
-    if not channel or channel == 0 then
-        channel = JoinChannelByName("LFG")
+function GroupFinder_OnRoleFilterChanged()
+    -- Update role filter states
+    local tankFilter = GroupFinderFrameRightPanelListViewTankFilter
+    local healerFilter = GroupFinderFrameRightPanelListViewHealerFilter
+    local dpsFilter = GroupFinderFrameRightPanelListViewDPSFilter
+    
+    if tankFilter then
+        roleFilters.tank = tankFilter:GetChecked()
     end
+    if healerFilter then
+        roleFilters.healer = healerFilter:GetChecked()
+    end
+    if dpsFilter then
+        roleFilters.dps = dpsFilter:GetChecked()
+    end
+    
+    GroupFinder_RefreshGroups()
+end
 
-    if channel and channel > 0 then
-        channelNumber = channel
-        PrintMessage("Joined LFG channel (ID: " .. channel .. ")")
+-- Channel-based communication functions
+local function SendGroupMessage(messageType, activity, leader, roles, description)
+    local currentChannelIndex = GetChannelIndex()
+    if currentChannelIndex == 0 then
+        PrintMessage("Not connected to GroupFinder channel - cannot broadcast group", true)
+        return false
+    end
+    
+    -- Get instance type for the activity
+    local instanceType = "Other"
+    local instanceInfo = INSTANCES[activity]
+    if instanceInfo and instanceInfo.type then
+        instanceType = instanceInfo.type
+    end
+    
+    -- Format: "[GroupFinder]:TYPE:InstanceType:InstanceName:LeaderName:Roles:Description"
+    local message = "[GroupFinder]:" .. messageType .. ":" .. instanceType .. ":" .. (activity or "") .. ":" .. (leader or "") .. ":" .. (roles or "") .. ":" .. (description or "")
+    
+    local success, errorMsg = pcall(function()
+        SendChatMessage(message, "CHANNEL", nil, currentChannelIndex)
+    end)
+    
+    if success then
+        PrintMessage("Group " .. string.lower(messageType) .. " sent to GroupFinder channel", false)
         return true
     else
-        -- Fallback to channel 4
-        channelNumber = 4
-        PrintMessage("Using channel 4 for LFG")
-        return true
+        PrintMessage("Failed to send channel message: " .. tostring(errorMsg), true)
+        return false
     end
 end
 
@@ -745,6 +959,8 @@ local function AddGroup(activity, leader, roles, description)
         return
     end
 
+    local currentTime = GetTimeStamp()
+
     -- Check if group already exists from same leader
     for i, group in ipairs(GroupFinderDB.groups) do
         if group.leader == leader then
@@ -752,7 +968,11 @@ local function AddGroup(activity, leader, roles, description)
             group.activity = activity
             group.roles = roles
             group.description = description
-            group.timestamp = GetTimeStamp()
+            group.timestamp = currentTime
+            -- Update lastBroadcast only if this is our own group
+            if leader == UnitName("player") then
+                group.lastBroadcast = currentTime
+            end
             return
         end
     end
@@ -763,7 +983,8 @@ local function AddGroup(activity, leader, roles, description)
         leader = leader,
         roles = roles,
         description = description,
-        timestamp = GetTimeStamp()
+        timestamp = currentTime,
+        lastBroadcast = (leader == UnitName("player")) and currentTime or nil
     }
 
     table.insert(GroupFinderDB.groups, newGroup)
@@ -771,6 +992,101 @@ local function AddGroup(activity, leader, roles, description)
     -- Limit number of groups
     while table.getn(GroupFinderDB.groups) > GroupFinderDB.settings.maxGroups do
         table.remove(GroupFinderDB.groups, 1)
+    end
+end
+
+-- Auto-broadcasting system functions
+local function BroadcastOwnGroup(group)
+    if not group or group.leader ~= UnitName("player") then
+        return false
+    end
+    
+    local debugPrefix = "|cff00ffff[GroupFinder Auto-Broadcast]|r "
+    
+    -- Sanitize all message components to prevent escape code errors
+    local cleanActivity = SanitizeForChat(group.activity or "")
+    local cleanRoles = SanitizeForChat(group.roles or "")
+    local cleanDescription = SanitizeForChat(group.description or "")
+    local cleanLeader = SanitizeForChat(group.leader or "")
+    
+    -- Validate that we have essential components after sanitization
+    if cleanActivity == "" or cleanLeader == "" or cleanRoles == "" then
+        DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "Cannot broadcast - essential data missing after sanitization")
+        return false
+    end
+    
+    -- Use channel-based communication system
+    local success = SendGroupMessage("UPDATE", cleanActivity, cleanLeader, cleanRoles, cleanDescription)
+    
+    if success then
+        group.lastBroadcast = GetTimeStamp()
+        DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "Auto-broadcast successful for: " .. group.activity)
+        return true
+    else
+        DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "Auto-broadcast failed for: " .. group.activity)
+        return false
+    end
+end
+
+local function AutoBroadcastOwnGroups()
+    if not isInitialized then
+        return
+    end
+    
+    local currentTime = GetTimeStamp()
+    local broadcastCount = 0
+    
+    for _, group in ipairs(GroupFinderDB.groups) do
+        if group.leader == UnitName("player") and group.lastBroadcast then
+            local timeSinceLastBroadcast = currentTime - group.lastBroadcast
+            
+            -- Re-broadcast if it's been more than AUTO_BROADCAST_INTERVAL seconds
+            if timeSinceLastBroadcast >= AUTO_BROADCAST_INTERVAL then
+                if BroadcastOwnGroup(group) then
+                    broadcastCount = broadcastCount + 1
+                end
+            end
+        end
+    end
+    
+    if broadcastCount > 0 then
+        local debugPrefix = "|cff00ffff[GroupFinder Auto-Broadcast]|r "
+        DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "Re-broadcast " .. broadcastCount .. " group(s)")
+    end
+end
+
+local function CleanupStaleGroups()
+    if not isInitialized then
+        return
+    end
+    
+    local currentTime = GetTimeStamp()
+    local removed = 0
+    local newGroups = {}
+    
+    for _, group in ipairs(GroupFinderDB.groups) do
+        local shouldKeep = true
+        
+        -- For groups from other players, check if they're stale (not broadcast recently)
+        if group.leader ~= UnitName("player") then
+            local timeSinceLastSeen = currentTime - group.timestamp
+            if timeSinceLastSeen > STALE_GROUP_TIMEOUT then
+                shouldKeep = false
+                removed = removed + 1
+            end
+        end
+        -- For our own groups, always keep them (they'll be auto-broadcast)
+        
+        if shouldKeep then
+            table.insert(newGroups, group)
+        end
+    end
+    
+    if removed > 0 then
+        GroupFinderDB.groups = newGroups
+        local debugPrefix = "|cff00ffff[GroupFinder Auto-Cleanup]|r "
+        DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "Removed " .. removed .. " stale group(s)")
+        GroupFinder_RefreshGroups()
     end
 end
 
@@ -804,9 +1120,20 @@ function GroupFinder_RefreshGroups()
         groupCountDisplay = GroupFinderFrameGroupCount
     end
     
+    -- Add nil checks and fallback handling
     if not scrollFrame then
-        PrintMessage("Error: ScrollFrame not found", true)
-        return
+        -- Try alternative scroll frame references
+        if GroupFinderFrameRightPanelListViewScrollFrame then
+            scrollFrame = GroupFinderFrameRightPanelListViewScrollFrame
+        elseif GroupFinderFrameScrollFrame then
+            scrollFrame = GroupFinderFrameScrollFrame
+        elseif GroupFinderFrame then
+            -- Create a temporary container if no scroll frame exists
+            scrollFrame = GroupFinderFrame
+        else
+            PrintMessage("Error: No valid scroll frame found - UI may not be loaded", true)
+            return
+        end
     end
 
     -- Create buttons for each group (filtered)
@@ -825,6 +1152,9 @@ function GroupFinder_RefreshGroups()
             -- Get button from pool
             local button = GetPooledButton(scrollFrame)
             button:SetPoint("TOPLEFT", 5, -offset)
+            
+            -- Increment offset for next button BEFORE processing this one further
+            offset = offset + buttonHeight
 
             -- Format button text with instance info
             local buttonText = string.format("%s %s\n%s - %s (%s)",
@@ -936,6 +1266,7 @@ function GroupFinder_RefreshGroups()
                         group.activity,
                         UnitClass("player")
                     )
+                    -- Use correct SendChatMessage format for whispers
                     SendChatMessage(message, "WHISPER", nil, group.leader)
                     local prefix = "|cff00ff00[GroupFinder]|r "
                     DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Whispered " .. group.leader .. " about joining their group")
@@ -986,7 +1317,6 @@ function GroupFinder_RefreshGroups()
             end)
 
             table.insert(groupButtons, button)
-            offset = offset + buttonHeight
             visibleGroups = visibleGroups + 1
         end
     end
@@ -1138,10 +1468,26 @@ function GroupFinder_DeleteGroup(index)
 
     local group = GroupFinderDB.groups[index]
     if group.leader == UnitName("player") then
+        -- Send DELETE message to other players before removing locally
+        local cleanActivity = SanitizeForChat(group.activity or "")
+        local cleanLeader = SanitizeForChat(group.leader or "")
+        local cleanRoles = SanitizeForChat(group.roles or "")
+        local cleanDescription = SanitizeForChat(group.description or "")
+        
+        -- Validate that we have essential components after sanitization
+        if cleanActivity ~= "" and cleanLeader ~= "" and cleanRoles ~= "" then
+            local success = SendGroupMessage("DELETE", cleanActivity, cleanLeader, cleanRoles, cleanDescription)
+            if success then
+                local debugPrefix = "|cff00ffff[GroupFinder Debug]|r "
+                DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "DELETE message sent for: " .. group.activity)
+            end
+        end
+        
+        -- Remove from local database
         table.remove(GroupFinderDB.groups, index)
         GroupFinder_RefreshGroups()
         local prefix = "|cff00ff00[GroupFinder]|r "
-        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Your group has been deleted.")
+        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Your group has been deleted and DELETE message sent to other players.")
     else
         local prefix = "|cffff0000[GroupFinder Error]|r "
         DEFAULT_CHAT_FRAME:AddMessage(prefix .. "You can only delete your own groups")
@@ -1215,6 +1561,20 @@ function GroupFinder_CreateGroup()
             group.roles = roles
             group.description = description or ""
             group.timestamp = GetTimeStamp()
+            
+            -- Send immediate UPDATE message
+            local cleanActivity = SanitizeForChat(activity or "")
+            local cleanRoles = SanitizeForChat(roles or "")
+            local cleanDescription = SanitizeForChat(description or "")
+            local cleanLeader = SanitizeForChat(group.leader or "")
+            
+            -- Validate that we have essential components after sanitization
+            if cleanActivity ~= "" and cleanLeader ~= "" and cleanRoles ~= "" then
+                local success = SendGroupMessage("UPDATE", cleanActivity, cleanLeader, cleanRoles, cleanDescription)
+                if success then
+                    group.lastBroadcast = GetTimeStamp()
+                end
+            end
 
             groupEditIndex = nil -- Reset
             GroupFinder_RefreshGroups()
@@ -1255,18 +1615,24 @@ function GroupFinder_CreateGroup()
 
     local leader = UnitName("player")
     
-    -- Clean the message to avoid invalid escape codes
-    local cleanActivity = string.gsub(activity or "", "[\\\"]", "")
-    local cleanRoles = string.gsub(roles or "", "[\\\"]", "")
-    local cleanDescription = string.gsub(description or "", "[\\\"]", "")
+    -- Sanitize all message components to prevent escape code errors
+    local cleanActivity = SanitizeForChat(activity or "")
+    local cleanRoles = SanitizeForChat(roles or "")
+    local cleanDescription = SanitizeForChat(description or "")
+    local cleanLeader = SanitizeForChat(leader or "")
     
-    local message = "LFG|" .. cleanActivity .. "|" .. leader .. "|" .. cleanRoles .. "|" .. cleanDescription
-
-    -- Send to channel
-    if channelNumber then
-        SendChatMessage(message, "CHANNEL", nil, channelNumber)
-        PrintMessage("Group posted to LFG channel")
-
+    -- Validate that we have essential components after sanitization
+    if cleanActivity == "" or cleanLeader == "" or cleanRoles == "" then
+        PrintMessage("Cannot create group - essential data missing after sanitization", true)
+        return
+    end
+    
+    -- Use channel-based communication system
+    local success = SendGroupMessage("CREATE", cleanActivity, cleanLeader, cleanRoles, cleanDescription)
+    
+    if success then
+        PrintMessage("Group posted using channel communication system")
+        
         -- Add to our own list immediately
         AddGroup(activity, leader, roles, description or "")
         GroupFinder_RefreshGroups()
@@ -1278,8 +1644,7 @@ function GroupFinder_CreateGroup()
             GroupFinderCreateFrame:Hide()  -- Hide legacy frame
         end
     else
-        PrintMessage("Not connected to LFG channel. Trying to reconnect...", true)
-        JoinLFGChannel()
+        PrintMessage("Failed to send group message", true)
     end
 end
 
@@ -1343,23 +1708,98 @@ end
 -- Event handling
 function GroupFinderFrame_OnEvent()
     if event == "CHAT_MSG_CHANNEL" then
-        local message, sender, _, _, _, _, _, _, channelName = arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9
+        local message, sender, language, channelString, target, flags, unknown, channelNumber = arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8
+        
+        -- Check if this is from our GroupFinder channel
+        if channelNumber == channelIndex and message and string.find(message, "^%[GroupFinder%]:") then
+            -- Remove the [GroupFinder]: prefix and parse the message
+            local cleanMessage = string.gsub(message, "^%[GroupFinder%]:", "")
+            local parts = SplitString(cleanMessage, ":")
+            
+            -- Debug message for received channel message
+            local debugPrefix = "|cff00ffff[GroupFinder Debug]|r "
+            DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "Received channel message from " .. (sender or "unknown"))
+            DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "Raw message: " .. (message or "nil"))
 
-        -- Check for LFG messages from any LFG-related channel
-        if (channelName == LFG_CHANNEL_NAME or channelName == "LFG" or channelName == "4") and string.sub(message, 1, 4) == "LFG|" then
-            local parts = SplitString(message, "|")
-
+            -- Handle both old format (4+ parts) and new format (5+ parts) for backward compatibility
             if table.getn(parts) >= 4 then
-                local activity = parts[2]
-                local leader = parts[3]
-                local roles = parts[4]
-                local description = parts[5] or ""
-
-                -- Don't add our own groups twice
-                if leader ~= UnitName("player") then
-                    AddGroup(activity, leader, roles, description)
-                    GroupFinder_RefreshGroups()
+                local messageType = parts[1]
+                local instanceType, activity, leader, roles, description
+                
+                if table.getn(parts) >= 5 then
+                    -- New format: TYPE:InstanceType:InstanceName:LeaderName:Roles:Description
+                    instanceType = parts[2]
+                    activity = parts[3]
+                    leader = parts[4]
+                    roles = parts[5]
+                    description = parts[6] or ""
+                    
+                    -- Debug parsing
+                    DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "Parsed - Type: " .. (messageType or "nil") .. ", InstanceType: " .. (instanceType or "nil") .. ", Activity: " .. (activity or "nil"))
+                else
+                    -- Old format: TYPE:InstanceName:LeaderName:Roles:Description (backward compatibility)
+                    instanceType = "Other"  -- Default for old messages
+                    activity = parts[2]
+                    leader = parts[3]
+                    roles = parts[4]
+                    description = parts[5] or ""
+                    
+                    -- Debug parsing
+                    DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "Parsed (old format) - Type: " .. (messageType or "nil") .. ", Activity: " .. (activity or "nil") .. ", defaulting InstanceType to Other")
                 end
+
+                -- Sanitize received data to prevent any escape code issues
+                instanceType = SanitizeForChat(instanceType or "Other")
+                activity = SanitizeForChat(activity or "")
+                leader = SanitizeForChat(leader or "")
+                roles = SanitizeForChat(roles or "")
+                description = SanitizeForChat(description or "")
+
+                -- Validate the data after sanitization
+                if activity and leader and roles and
+                   string.len(activity) > 0 and string.len(leader) > 0 and string.len(roles) > 0 then
+                    
+                    -- Don't add our own groups twice
+                    if leader ~= UnitName("player") then
+                        if messageType == "CREATE" or messageType == "UPDATE" then
+                            AddGroup(activity, leader, roles, description)
+                            GroupFinder_RefreshGroups()
+                            
+                            -- Debug message for successful parsing
+                            DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "Added/Updated group: " .. activity .. " (" .. instanceType .. ") by " .. leader)
+                            
+                            -- Check what instance info we have for this activity
+                            local instanceInfo = INSTANCES[activity]
+                            if instanceInfo then
+                                DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "Instance info found - Type: " .. instanceInfo.type .. ", Level: " .. instanceInfo.level)
+                            else
+                                DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "No instance info found for: " .. activity)
+                            end
+                        elseif messageType == "DELETE" then
+                            -- Remove group from leader
+                            local removed = 0
+                            local newGroups = {}
+                            for _, group in ipairs(GroupFinderDB.groups) do
+                                if group.leader ~= leader then
+                                    table.insert(newGroups, group)
+                                else
+                                    removed = removed + 1
+                                end
+                            end
+                            if removed > 0 then
+                                GroupFinderDB.groups = newGroups
+                                GroupFinder_RefreshGroups()
+                                DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "Removed " .. removed .. " group(s) from " .. leader)
+                            end
+                        end
+                    else
+                        DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "Ignored own group message")
+                    end
+                else
+                    DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "Invalid group data received after sanitization - skipping")
+                end
+            else
+                DEFAULT_CHAT_FRAME:AddMessage(debugPrefix .. "Malformed channel message - not enough parts")
             end
         end
     elseif event == "ADDON_LOADED" then
@@ -1439,9 +1879,9 @@ function GroupFinder_OnLoad(self)
     self:RegisterEvent("CHAT_MSG_CHANNEL")
     self:RegisterEvent("ADDON_LOADED")
     self:SetScript("OnEvent", GroupFinderFrame_OnEvent)
-
-    -- Try to join LFG channel
-    JoinLFGChannel()
+    
+    -- Join the GroupFinder channel
+    JoinGroupFinderChannel()
 
     -- Setup slash commands
     SLASH_GROUPFINDER1 = "/groupfinder"
@@ -1458,21 +1898,118 @@ function GroupFinder_OnLoad(self)
         elseif mainCommand == "cleanup" then
             CleanupExpiredGroups()
         elseif mainCommand == "debug" then
-            -- Debug command for testing new UI
+            -- Debug command for testing new UI and channel system
             local prefix = "|cff00ffff[GroupFinder Debug]|r "
             DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Current view: " .. currentView)
             DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Current instance type: " .. currentInstanceType)
             DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Panel frames initialized: " .. tostring(panelFrames.listView ~= nil))
             DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Active buttons: " .. table.getn(framePool.activeButtons))
             DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Pooled buttons: " .. table.getn(framePool.groupButtons))
+            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Communication: Channel-based system")
+            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Channel: " .. GROUPFINDER_CHANNEL .. " (index: " .. channelIndex .. ")")
+            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Channel join attempts: " .. channelJoinAttempts)
+            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Auto-broadcast timer: " .. string.format("%.1f", autoBroadcastTimer) .. "/" .. AUTO_BROADCAST_INTERVAL .. "s")
+            
+            -- Show own groups and their broadcast status
+            local ownGroups = 0
+            local currentTime = GetTimeStamp()
+            for _, group in ipairs(GroupFinderDB.groups) do
+                if group.leader == UnitName("player") then
+                    ownGroups = ownGroups + 1
+                    local timeSinceLastBroadcast = group.lastBroadcast and (currentTime - group.lastBroadcast) or "never"
+                    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Own group: " .. group.activity .. " (last broadcast: " ..
+                        (type(timeSinceLastBroadcast) == "number" and (timeSinceLastBroadcast .. "s ago") or timeSinceLastBroadcast) .. ")")
+                end
+            end
+            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Own groups: " .. ownGroups)
+            
+            -- Test addon message target
+            local target = GetAddonMessageTarget()
+            if target then
+                DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Addon message target available: " .. target)
+            else
+                DEFAULT_CHAT_FRAME:AddMessage(prefix .. "No addon message target (not in guild/party/raid)")
+            end
+        elseif mainCommand == "broadcast" then
+            -- Manual trigger for auto-broadcasting (for testing)
+            AutoBroadcastOwnGroups()
+            PrintMessage("Manual auto-broadcast triggered")
+        elseif mainCommand == "cleanstale" then
+            -- Manual trigger for stale group cleanup (for testing)
+            CleanupStaleGroups()
+            PrintMessage("Manual stale group cleanup triggered")
+        elseif mainCommand == "test" then
+            -- Test function to verify the fixes
+            local prefix = "|cff00ffff[GroupFinder Test]|r "
+            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Testing message parsing and filtering fixes...")
+            
+            -- Test the example message format
+            local testMessage = "[GroupFinder]:CREATE:Dungeon:Gnomergan:Marcel:Need: Tank:"
+            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Simulating message: " .. testMessage)
+            
+            -- Simulate the parsing logic
+            local cleanMessage = string.gsub(testMessage, "^%[GroupFinder%]:", "")
+            local parts = SplitString(cleanMessage, ":")
+            
+            if table.getn(parts) >= 5 then
+                local messageType = parts[1]
+                local instanceType = parts[2]
+                local activity = parts[3]
+                local leader = parts[4]
+                local roles = parts[5]
+                local description = parts[6] or ""
+                
+                DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Parsed - Type: " .. messageType .. ", InstanceType: " .. instanceType .. ", Activity: " .. activity)
+                
+                -- Test the filtering logic
+                local instanceInfo = INSTANCES[activity]
+                if instanceInfo then
+                    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Instance info found - Type: " .. instanceInfo.type .. ", Level: " .. instanceInfo.level)
+                    
+                    -- Test the filter mapping
+                    local filterToInstanceType = {
+                        ["Dungeon"] = "Dungeon",
+                        ["Dungeons"] = "Dungeon",
+                        ["Raid"] = "Raid",
+                        ["Raids"] = "Raid",
+                        ["PvP"] = "PvP",
+                        ["Questing"] = "Questing",
+                        ["Other"] = "Other"
+                    }
+                    
+                    local expectedInstanceType = filterToInstanceType["Dungeon"] or "Dungeon"
+                    local wouldShow = (instanceInfo.type == expectedInstanceType)
+                    
+                    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Filter test - Expected: " .. expectedInstanceType .. ", Actual: " .. instanceInfo.type .. ", Would show in Dungeon filter: " .. tostring(wouldShow))
+                else
+                    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "No instance info found for: " .. activity)
+                end
+                
+                -- Add the test group temporarily
+                AddGroup(activity, leader, roles, description)
+                DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Test group added temporarily")
+                
+                -- Test focus clearing
+                DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Testing focus clearing...")
+                GroupFinder_ClearAllInputFocus()
+                DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Focus cleared on all inputs")
+            else
+                DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Failed to parse test message")
+            end
         elseif mainCommand == "help" then
             PrintMessage("Commands:")
             PrintMessage("/groupfinder or /gf - Toggle main window")
             PrintMessage("/gf clear - Remove your own groups")
             PrintMessage("/gf clearall - Remove all groups")
             PrintMessage("/gf cleanup - Clean up expired groups")
-            PrintMessage("/gf debug - Show debug information")
+            PrintMessage("/gf debug - Show debug information and auto-broadcast status")
+            PrintMessage("/gf broadcast - Manually trigger auto-broadcast (testing)")
+            PrintMessage("/gf cleanstale - Manually trigger stale group cleanup (testing)")
+            PrintMessage("/gf test - Test the message parsing and filtering fixes")
             PrintMessage("/gf help - Show this help")
+            PrintMessage("Communication: Uses custom GroupFinder channel (server-wide)")
+            PrintMessage("Auto-broadcast: Groups re-broadcast every " .. AUTO_BROADCAST_INTERVAL .. " seconds")
+            PrintMessage("Stale cleanup: Groups not seen for " .. STALE_GROUP_TIMEOUT .. " seconds are removed")
         else
             if GroupFinderFrame:IsShown() then
                 GroupFinderFrame:Hide()
@@ -1482,22 +2019,34 @@ function GroupFinder_OnLoad(self)
         end
     end
 
-    -- Setup update timer for cleanup
+    -- Setup update timer for cleanup and auto-broadcasting
     local frame = CreateFrame("Frame")
     frame:SetScript("OnUpdate", function()
         local elapsed = arg1 or 0
         updateTimer = updateTimer + elapsed
+        autoBroadcastTimer = autoBroadcastTimer + elapsed
+        
+        -- Auto-broadcast and cleanup stale groups every 60 seconds
+        if autoBroadcastTimer >= AUTO_BROADCAST_INTERVAL then
+            autoBroadcastTimer = 0
+            AutoBroadcastOwnGroups()
+            CleanupStaleGroups()
+        end
+        
+        -- Regular cleanup every 5 minutes
         if updateTimer >= CLEANUP_INTERVAL then
             updateTimer = 0
             CleanupExpiredGroups()
 
-            -- Try to reconnect to channel if disconnected
-            if not channelNumber or not FindLFGChannel() then
-                JoinLFGChannel()
+            -- Check and rejoin channel if needed
+            if channelIndex == 0 then
+                JoinGroupFinderChannel()
             end
         end
     end)
 
     PrintMessage("Loaded! Use /groupfinder or /gf to open. Type /gf help for commands.")
+    PrintMessage("Using channel-based system for group communication (server-wide via GroupFinder channel).")
     PrintMessage("New dynamic panel UI system enabled with memory optimization.")
+    PrintMessage("Auto-broadcasting: Your groups will be re-broadcast every " .. AUTO_BROADCAST_INTERVAL .. " seconds automatically.")
 end

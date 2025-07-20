@@ -287,6 +287,138 @@
                                         </Anchor>
                                     </Anchors>
                                 </FontString>
+
+                                <!-- Search Label -->
+                                <FontString name="$parentSearchLabel" inherits="GameFontNormal" text="Search:">
+                                    <Size>
+                                        <AbsDimension x="50" y="16"/>
+                                    </Size>
+                                    <FontHeight>
+                                        <AbsValue val="12"/>
+                                    </FontHeight>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="10" y="-35"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                </FontString>
+
+                                <!-- Role Filter Label -->
+                                <FontString name="$parentRoleFilterLabel" inherits="GameFontNormal" text="Roles:">
+                                    <Size>
+                                        <AbsDimension x="40" y="16"/>
+                                    </Size>
+                                    <FontHeight>
+                                        <AbsValue val="12"/>
+                                    </FontHeight>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="200" y="-35"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                </FontString>
+
+                                <!-- Tank Filter Label -->
+                                <FontString name="$parentTankFilterLabel" inherits="GameFontNormalSmall" text="T">
+                                    <Size>
+                                        <AbsDimension x="15" y="12"/>
+                                    </Size>
+                                    <FontHeight>
+                                        <AbsValue val="10"/>
+                                    </FontHeight>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="265" y="-37"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                </FontString>
+
+                                <!-- Healer Filter Label -->
+                                <FontString name="$parentHealerFilterLabel" inherits="GameFontNormalSmall" text="H">
+                                    <Size>
+                                        <AbsDimension x="15" y="12"/>
+                                    </Size>
+                                    <FontHeight>
+                                        <AbsValue val="10"/>
+                                    </FontHeight>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="305" y="-37"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                </FontString>
+
+                                <!-- DPS Filter Label -->
+                                <FontString name="$parentDPSFilterLabel" inherits="GameFontNormalSmall" text="D">
+                                    <Size>
+                                        <AbsDimension x="15" y="12"/>
+                                    </Size>
+                                    <FontHeight>
+                                        <AbsValue val="10"/>
+                                    </FontHeight>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="345" y="-37"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                </FontString>
+                            </Layer>
+
+                            <Layer level="ARTWORK">
+                                <!-- Tank Filter Icon -->
+                                <Texture name="$parentTankFilterIcon">
+                                    <Size>
+                                        <AbsDimension x="16" y="16"/>
+                                    </Size>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="245" y="-35"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                    <TexCoords left="0" right="1" top="0" bottom="1"/>
+                                </Texture>
+
+                                <!-- Healer Filter Icon -->
+                                <Texture name="$parentHealerFilterIcon">
+                                    <Size>
+                                        <AbsDimension x="16" y="16"/>
+                                    </Size>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="285" y="-35"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                    <TexCoords left="0" right="1" top="0" bottom="1"/>
+                                </Texture>
+
+                                <!-- DPS Filter Icon -->
+                                <Texture name="$parentDPSFilterIcon">
+                                    <Size>
+                                        <AbsDimension x="16" y="16"/>
+                                    </Size>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="325" y="-35"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                    <TexCoords left="0" right="1" top="0" bottom="1"/>
+                                </Texture>
                             </Layer>
                         </Layers>
                         
@@ -310,22 +442,119 @@
                                 </Scripts>
                             </Button>
 
-                            <!-- Group List Scroll Frame -->
-                            <ScrollFrame name="$parentScrollFrame" inherits="UIPanelScrollFrameTemplate">
+                            <!-- Search Input Field -->
+                            <EditBox name="$parentSearchInput" inherits="InputBoxTemplate">
                                 <Size>
-                                    <AbsDimension x="360" y="350"/>
+                                    <AbsDimension x="120" y="20"/>
                                 </Size>
                                 <Anchors>
                                     <Anchor point="TOPLEFT">
                                         <Offset>
-                                            <AbsDimension x="10" y="-40"/>
+                                            <AbsDimension x="60" y="-35"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Scripts>
+                                    <OnLoad>
+                                        this:SetText("");
+                                        this:SetTextColor(1, 1, 1, 1);
+                                        this:SetAutoFocus(false);
+                                    </OnLoad>
+                                    <OnTextChanged>
+                                        GroupFinder_OnSearchTextChanged();
+                                    </OnTextChanged>
+                                    <OnEnterPressed>
+                                        GroupFinder_RefreshGroups();
+                                        this:ClearFocus();
+                                    </OnEnterPressed>
+                                    <OnEscapePressed>
+                                        this:ClearFocus();
+                                    </OnEscapePressed>
+                                </Scripts>
+                            </EditBox>
+
+                            <!-- Tank Filter Checkbox -->
+                            <CheckButton name="$parentTankFilter" inherits="OptionsCheckButtonTemplate">
+                                <Size>
+                                    <AbsDimension x="16" y="16"/>
+                                </Size>
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="245" y="-35"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Scripts>
+                                    <OnLoad>
+                                        this:SetChecked(false);
+                                    </OnLoad>
+                                    <OnClick>
+                                        GroupFinder_OnRoleFilterChanged();
+                                    </OnClick>
+                                </Scripts>
+                            </CheckButton>
+
+                            <!-- Healer Filter Checkbox -->
+                            <CheckButton name="$parentHealerFilter" inherits="OptionsCheckButtonTemplate">
+                                <Size>
+                                    <AbsDimension x="16" y="16"/>
+                                </Size>
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="285" y="-35"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Scripts>
+                                    <OnLoad>
+                                        this:SetChecked(false);
+                                    </OnLoad>
+                                    <OnClick>
+                                        GroupFinder_OnRoleFilterChanged();
+                                    </OnClick>
+                                </Scripts>
+                            </CheckButton>
+
+                            <!-- DPS Filter Checkbox -->
+                            <CheckButton name="$parentDPSFilter" inherits="OptionsCheckButtonTemplate">
+                                <Size>
+                                    <AbsDimension x="16" y="16"/>
+                                </Size>
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="325" y="-35"/>
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Scripts>
+                                    <OnLoad>
+                                        this:SetChecked(false);
+                                    </OnLoad>
+                                    <OnClick>
+                                        GroupFinder_OnRoleFilterChanged();
+                                    </OnClick>
+                                </Scripts>
+                            </CheckButton>
+
+                            <!-- Group List Scroll Frame -->
+                            <ScrollFrame name="$parentScrollFrame" inherits="UIPanelScrollFrameTemplate">
+                                <Size>
+                                    <AbsDimension x="360" y="320"/>
+                                </Size>
+                                <Anchors>
+                                    <Anchor point="TOPLEFT">
+                                        <Offset>
+                                            <AbsDimension x="10" y="-70"/>
                                         </Offset>
                                     </Anchor>
                                 </Anchors>
                                 <ScrollChild>
                                     <Frame name="$parentList">
                                         <Size>
-                                            <AbsDimension x="360" y="350"/>
+                                            <AbsDimension x="360" y="320"/>
                                         </Size>
                                     </Frame>
                                 </ScrollChild>
@@ -386,6 +615,21 @@
                                 </Scripts>
                             </Button>
                         </Frames>
+                        
+                        <Scripts>
+                            <OnLoad>
+                                -- Set texture paths for role filter icons using proper WoW 1.12 paths
+                                if GroupFinderFrameRightPanelListViewTankFilterIcon then
+                                    GroupFinderFrameRightPanelListViewTankFilterIcon:SetTexture("Interface\\Icons\\Ability_Defend");
+                                end
+                                if GroupFinderFrameRightPanelListViewHealerFilterIcon then
+                                    GroupFinderFrameRightPanelListViewHealerFilterIcon:SetTexture("Interface\\Icons\\Spell_Holy_Heal");
+                                end
+                                if GroupFinderFrameRightPanelListViewDPSFilterIcon then
+                                    GroupFinderFrameRightPanelListViewDPSFilterIcon:SetTexture("Interface\\Icons\\Ability_DualWield");
+                                end
+                            </OnLoad>
+                        </Scripts>
                     </Frame>
 
                     <!-- Create View Panel -->
@@ -732,6 +976,7 @@
                                     <OnLoad>
                                         this:SetText("Description: e.g., Fast run, need keys");
                                         this:SetTextColor(0.7, 0.7, 0.7, 1);
+                                        this:SetAutoFocus(false);
                                     </OnLoad>
                                     <OnEditFocusGained>
                                         if string.find(this:GetText(), "e.g.,") then
@@ -747,7 +992,11 @@
                                     </OnEditFocusLost>
                                     <OnEnterPressed>
                                         GroupFinder_CreateGroup();
+                                        this:ClearFocus();
                                     </OnEnterPressed>
+                                    <OnEscapePressed>
+                                        this:ClearFocus();
+                                    </OnEscapePressed>
                                 </Scripts>
                             </EditBox>
 
@@ -816,6 +1065,7 @@
                                     <OnLoad>
                                         this:SetText("Discord/TS...");
                                         this:SetTextColor(0.7, 0.7, 0.7, 1);
+                                        this:SetAutoFocus(false);
                                     </OnLoad>
                                     <OnEditFocusGained>
                                         if string.find(this:GetText(), "Discord") then
@@ -829,6 +1079,9 @@
                                             this:SetTextColor(0.7, 0.7, 0.7, 1);
                                         end
                                     </OnEditFocusLost>
+                                    <OnEscapePressed>
+                                        this:ClearFocus();
+                                    </OnEscapePressed>
                                 </Scripts>
                             </EditBox>
 
@@ -905,6 +1158,9 @@
             <OnShow>
                 GroupFinder_OnShow();
             </OnShow>
+            <OnMouseDown>
+                GroupFinder_ClearAllInputFocus();
+            </OnMouseDown>
             <OnDragStart>
                 this:StartMoving();
             </OnDragStart>
@@ -1198,6 +1454,7 @@
                     <OnLoad>
                         this:SetText("Description: e.g., Fast run, need keys");
                         this:SetTextColor(0.7, 0.7, 0.7, 1);
+                        this:SetAutoFocus(false);
                     </OnLoad>
                     <OnEditFocusGained>
                         if string.find(this:GetText(), "e.g.,") then
@@ -1213,7 +1470,11 @@
                     </OnEditFocusLost>
                     <OnEnterPressed>
                         GroupFinder_CreateGroup();
+                        this:ClearFocus();
                     </OnEnterPressed>
+                    <OnEscapePressed>
+                        this:ClearFocus();
+                    </OnEscapePressed>
                 </Scripts>
             </EditBox>
 
