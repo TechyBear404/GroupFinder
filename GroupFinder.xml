@@ -1,6 +1,6 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
     
-    <!-- Main GroupFinder Frame with New Dynamic Panel Layout -->
+    <!-- Main GroupFinder Frame with Proper WoW 1.12 Structure -->
     <Frame name="GroupFinderFrame" toplevel="true" frameStrata="DIALOG" movable="true" enableMouse="true" hidden="true" parent="UIParent">
         <Size>
             <AbsDimension x="600" y="500"/>
@@ -15,19 +15,49 @@
             <TileSize val="32"/>
             <EdgeSize val="32"/>
         </Backdrop>
-        <Frames>
-            <!-- Title -->
-            <FontString name="$parentTitleText" inherits="GameFontNormalLarge">
-                <Anchors>
-                    <Anchor point="TOP">
-                        <Offset>
-                            <AbsDimension x="0" y="-15"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Text>Group Finder Enhanced</Text>
-            </FontString>
+        
+        <!-- Background Layers -->
+        <Layers>
+            <Layer level="BACKGROUND">
+                <!-- Main background texture -->
+                <Texture name="$parentBg">
+                    <Anchors>
+                        <Anchor point="TOPLEFT">
+                            <Offset>
+                                <AbsDimension x="11" y="-12"/>
+                            </Offset>
+                        </Anchor>
+                        <Anchor point="BOTTOMRIGHT">
+                            <Offset>
+                                <AbsDimension x="-12" y="11"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                    <Color r="0" g="0" b="0" a="0.8"/>
+                </Texture>
+            </Layer>
             
+            <Layer level="OVERLAY">
+                <!-- Title Text -->
+                <FontString name="$parentTitleText" inherits="GameFontNormalLarge" text="Turtle Group Finder">
+                    <Size>
+                        <AbsDimension x="200" y="20"/>
+                    </Size>
+                    <FontHeight>
+                        <AbsValue val="16"/>
+                    </FontHeight>
+                    <Anchors>
+                        <Anchor point="TOP">
+                            <Offset>
+                                <AbsDimension x="0" y="-15"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </FontString>
+            </Layer>
+        </Layers>
+        
+        <Frames>
             <!-- Close Button -->
             <Button name="$parentCloseButton" inherits="UIPanelCloseButton">
                 <Anchors>
@@ -63,19 +93,29 @@
                     <TileSize val="8"/>
                     <EdgeSize val="8"/>
                 </Backdrop>
+                
+                <Layers>
+                    <Layer level="OVERLAY">
+                        <!-- Instance Type Label -->
+                        <FontString name="$parentTypeLabel" inherits="GameFontNormalSmall" text="Select Instance Type">
+                            <Size>
+                                <AbsDimension x="120" y="16"/>
+                            </Size>
+                            <FontHeight>
+                                <AbsValue val="12"/>
+                            </FontHeight>
+                            <Anchors>
+                                <Anchor point="TOP">
+                                    <Offset>
+                                        <AbsDimension x="0" y="-10"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                    </Layer>
+                </Layers>
+                
                 <Frames>
-                    <!-- Instance Type Label -->
-                    <FontString name="$parentTypeLabel" inherits="GameFontNormalSmall">
-                        <Anchors>
-                            <Anchor point="TOP">
-                                <Offset>
-                                    <AbsDimension x="0" y="-10"/>
-                                </Offset>
-                            </Anchor>
-                        </Anchors>
-                        <Text>Instance Type</Text>
-                    </FontString>
-
                     <!-- All Button -->
                     <Button name="$parentAllButton" inherits="UIPanelButtonTemplate" text="All">
                         <Size>
@@ -152,8 +192,8 @@
                         </Scripts>
                     </Button>
 
-                    <!-- Other Button -->
-                    <Button name="$parentOtherButton" inherits="UIPanelButtonTemplate" text="Other">
+                    <!-- Questing Button -->
+                    <Button name="$parentQuestingButton" inherits="UIPanelButtonTemplate" text="Questing">
                         <Size>
                             <AbsDimension x="120" y="25"/>
                         </Size>
@@ -166,11 +206,31 @@
                         </Anchors>
                         <Scripts>
                             <OnClick>
+                                GroupFinder_SetInstanceType("Questing");
+                            </OnClick>
+                        </Scripts>
+                    </Button>
+
+                    <!-- Other Button -->
+                    <Button name="$parentOtherButton" inherits="UIPanelButtonTemplate" text="Other">
+                        <Size>
+                            <AbsDimension x="120" y="25"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOP">
+                                <Offset>
+                                    <AbsDimension x="0" y="-185"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>
                                 GroupFinder_SetInstanceType("Other");
                             </OnClick>
                         </Scripts>
                     </Button>
                 </Frames>
+                
                 <Scripts>
                     <OnLoad>
                         this:SetBackdropColor(0.1, 0.1, 0.1, 0.8);
@@ -198,6 +258,7 @@
                     <TileSize val="8"/>
                     <EdgeSize val="8"/>
                 </Backdrop>
+                
                 <Frames>
                     <!-- List View Panel -->
                     <Frame name="$parentListView">
@@ -207,19 +268,29 @@
                         <Anchors>
                             <Anchor point="CENTER"/>
                         </Anchors>
+                        
+                        <Layers>
+                            <Layer level="OVERLAY">
+                                <!-- Group Count Display -->
+                                <FontString name="$parentGroupCount" inherits="GameFontNormal" text="Groups found: 0">
+                                    <Size>
+                                        <AbsDimension x="200" y="16"/>
+                                    </Size>
+                                    <FontHeight>
+                                        <AbsValue val="12"/>
+                                    </FontHeight>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="10" y="-10"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                </FontString>
+                            </Layer>
+                        </Layers>
+                        
                         <Frames>
-                            <!-- Group Count Display -->
-                            <FontString name="$parentGroupCount" inherits="GameFontNormal">
-                                <Anchors>
-                                    <Anchor point="TOPLEFT">
-                                        <Offset>
-                                            <AbsDimension x="10" y="-10"/>
-                                        </Offset>
-                                    </Anchor>
-                                </Anchors>
-                                <Text>Groups found: 0</Text>
-                            </FontString>
-
                             <!-- Add Group Button -->
                             <Button name="$parentAddGroupButton" inherits="UIPanelButtonTemplate" text="Add Group">
                                 <Size>
@@ -325,42 +396,251 @@
                         <Anchors>
                             <Anchor point="CENTER"/>
                         </Anchors>
+                        
+                        <Layers>
+                            <Layer level="OVERLAY">
+                                <!-- Create Group Title -->
+                                <FontString name="$parentTitle" inherits="GameFontNormalLarge" text="Create Group"> 
+                                    <Size>
+                                        <AbsDimension x="150" y="20"/>
+                                    </Size>
+                                    <FontHeight>
+                                        <AbsValue val="16"/>
+                                    </FontHeight>
+                                    <Anchors>
+                                        <Anchor point="TOP">
+                                            <Offset>
+                                                <AbsDimension x="0" y="-15"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                </FontString>
+
+                                <!-- Instance Label -->
+                                <FontString name="$parentInstanceLabel" inherits="GameFontNormal" justifyH="LEFT" text="Instance:"> 
+                                    <Size>
+                                        <AbsDimension x="80" y="16"/>
+                                    </Size>
+                                    <FontHeight>
+                                        <AbsValue val="12"/>
+                                    </FontHeight>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="10" y="-50"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                </FontString>
+
+                                <!-- Instance Display - FIXED with proper FontString structure -->
+                                <FontString name="$parentInstanceDisplay" inherits="GameFontHighlight" justifyH="LEFT">
+                                    <Size>
+                                        <AbsDimension x="300" y="16"/>
+                                    </Size>
+                                    <FontHeight>
+                                        <AbsValue val="12"/>
+                                    </FontHeight>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="20" y="-70"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                </FontString>
+
+                                <!-- Activity Description Message for Questing/Other -->
+                                <FontString name="$parentActivityMessage" inherits="GameFontNormal" text="Describe your activity in the description field"> 
+                                    <Size>
+                                        <AbsDimension x="340" y="16"/>
+                                    </Size>
+                                    <FontHeight>
+                                        <AbsValue val="12"/>
+                                    </FontHeight>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="20" y="-70"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                    <Color r="0.8" g="0.8" b="0.8" a="1"/>
+                                </FontString>
+
+                                <!-- Roles Label -->
+                                <FontString name="$parentRolesLabel" inherits="GameFontNormal" hidden="false" justifyH="LEFT" text="Roles Needed:">
+                                    <Size>
+                                        <AbsDimension x="120" y="16"/>
+                                    </Size>
+                                    <FontHeight>
+                                        <AbsValue val="12"/>
+                                    </FontHeight>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="10" y="-110"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                </FontString>
+
+                                <!-- Tank Label -->
+                                <FontString name="$parentTankLabel" inherits="GameFontNormal" justifyH="LEFT" text="Tank">
+                                    <Size>
+                                        <AbsDimension x="50" y="16"/>
+                                    </Size>
+                                    <FontHeight>
+                                        <AbsValue val="12"/>
+                                    </FontHeight>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="65" y="-135"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                </FontString>
+
+                                <!-- Healer Label -->
+                                <FontString name="$parentHealerLabel" inherits="GameFontNormal" justifyH="LEFT" text="Healer">
+                                    <Size>
+                                        <AbsDimension x="60" y="16"/>
+                                    </Size>
+                                    <FontHeight>
+                                        <AbsValue val="12"/>
+                                    </FontHeight>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="165" y="-135"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                    <Text>Healer</Text>
+                                </FontString>
+
+                                <!-- DPS Label -->
+                                <FontString name="$parentDPSLabel" inherits="GameFontNormal" justifyH="LEFT" text="DPS">
+                                    <Size>
+                                        <AbsDimension x="40" y="16"/>
+                                    </Size>
+                                    <FontHeight>
+                                        <AbsValue val="12"/>
+                                    </FontHeight>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="285" y="-135"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                </FontString>
+
+                                <!-- Details Label -->
+                                <FontString name="$parentDetailsLabel" inherits="GameFontNormal" justifyH="LEFT" text="Details:">
+                                    <Size>
+                                        <AbsDimension x="80" y="16"/>
+                                    </Size>
+                                    <FontHeight>
+                                        <AbsValue val="12"/>
+                                    </FontHeight>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="10" y="-170"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                </FontString>
+
+                                <!-- Min Level Label - FIXED with proper FontString -->
+                                <FontString name="$parentMinLevelLabel" inherits="GameFontNormal" justifyH="LEFT" text="Min Level:">
+                                    <Size>
+                                        <AbsDimension x="80" y="16"/>
+                                    </Size>
+                                    <FontHeight>
+                                        <AbsValue val="12"/>
+                                    </FontHeight>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="40" y="-235"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                    <Color r="1" g="1" b="1" a="1"/>
+                                </FontString>
+
+                                <!-- Voice Chat Label - FIXED with proper FontString -->
+                                <FontString name="$parentVoiceChatLabel" inherits="GameFontNormal" justifyH="LEFT" text="Voice Chat:">
+                                    <Size>
+                                        <AbsDimension x="90" y="16"/>
+                                    </Size>
+                                    <FontHeight>
+                                        <AbsValue val="12"/>
+                                    </FontHeight>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="40" y="-265"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                    <Color r="1" g="1" b="1" a="1"/>
+                                </FontString>
+                            </Layer>
+                            
+                            <Layer level="ARTWORK">
+                                <!-- Tank Icon - FIXED with proper Texture in ARTWORK layer -->
+                                <Texture name="$parentTankIcon">
+                                    <Size>
+                                        <AbsDimension x="16" y="16"/>
+                                    </Size>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="45" y="-133"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                    <TexCoords left="0" right="1" top="0" bottom="1"/>
+                                </Texture>
+
+                                <!-- Healer Icon - FIXED with proper Texture in ARTWORK layer -->
+                                <Texture name="$parentHealerIcon">
+                                    <Size>
+                                        <AbsDimension x="16" y="16"/>
+                                    </Size>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="145" y="-133"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                    <TexCoords left="0" right="1" top="0" bottom="1"/>
+                                </Texture>
+
+                                <!-- DPS Icon - FIXED with proper Texture in ARTWORK layer -->
+                                <Texture name="$parentDPSIcon">
+                                    <Size>
+                                        <AbsDimension x="16" y="16"/>
+                                    </Size>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="265" y="-133"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                    <TexCoords left="0" right="1" top="0" bottom="1"/>
+                                </Texture>
+                            </Layer>
+                        </Layers>
+                        
                         <Frames>
-                            <!-- Create Group Title -->
-                            <FontString name="$parentTitle" inherits="GameFontNormalLarge">
-                                <Anchors>
-                                    <Anchor point="TOP">
-                                        <Offset>
-                                            <AbsDimension x="0" y="-15"/>
-                                        </Offset>
-                                    </Anchor>
-                                </Anchors>
-                                <Text>Create Group</Text>
-                            </FontString>
-
-                            <!-- Instance Selection -->
-                            <FontString name="$parentInstanceLabel" inherits="GameFontNormal">
-                                <Anchors>
-                                    <Anchor point="TOPLEFT">
-                                        <Offset>
-                                            <AbsDimension x="20" y="-50"/>
-                                        </Offset>
-                                    </Anchor>
-                                </Anchors>
-                                <Text>Instance:</Text>
-                            </FontString>
-
-                            <FontString name="$parentInstanceDisplay" inherits="GameFontHighlight">
-                                <Anchors>
-                                    <Anchor point="TOPLEFT">
-                                        <Offset>
-                                            <AbsDimension x="20" y="-70"/>
-                                        </Offset>
-                                    </Anchor>
-                                </Anchors>
-                                <Text>The Deadmines (17-26 - Dungeon)</Text>
-                            </FontString>
-
+                            <!-- Instance Selection Button -->
                             <Button name="$parentInstanceButton" inherits="UIPanelButtonTemplate" text="Select Instance">
                                 <Size>
                                     <AbsDimension x="120" y="22"/>
@@ -378,18 +658,6 @@
                                     </OnClick>
                                 </Scripts>
                             </Button>
-
-                            <!-- Roles Section -->
-                            <FontString name="$parentRolesLabel" inherits="GameFontNormal">
-                                <Anchors>
-                                    <Anchor point="TOPLEFT">
-                                        <Offset>
-                                            <AbsDimension x="20" y="-110"/>
-                                        </Offset>
-                                    </Anchor>
-                                </Anchors>
-                                <Text>Roles Needed:</Text>
-                            </FontString>
 
                             <!-- Tank Checkbox -->
                             <CheckButton name="$parentTankCheck" inherits="OptionsCheckButtonTemplate">
@@ -410,17 +678,6 @@
                                 </Scripts>
                             </CheckButton>
 
-                            <FontString name="$parentTankLabel" inherits="GameFontNormal">
-                                <Anchors>
-                                    <Anchor point="TOPLEFT">
-                                        <Offset>
-                                            <AbsDimension x="45" y="-135"/>
-                                        </Offset>
-                                    </Anchor>
-                                </Anchors>
-                                <Text>Tank</Text>
-                            </FontString>
-
                             <!-- Healer Checkbox -->
                             <CheckButton name="$parentHealerCheck" inherits="OptionsCheckButtonTemplate">
                                 <Size>
@@ -440,17 +697,6 @@
                                 </Scripts>
                             </CheckButton>
 
-                            <FontString name="$parentHealerLabel" inherits="GameFontNormal">
-                                <Anchors>
-                                    <Anchor point="TOPLEFT">
-                                        <Offset>
-                                            <AbsDimension x="145" y="-135"/>
-                                        </Offset>
-                                    </Anchor>
-                                </Anchors>
-                                <Text>Healer</Text>
-                            </FontString>
-
                             <!-- DPS Checkbox -->
                             <CheckButton name="$parentDPSCheck" inherits="OptionsCheckButtonTemplate">
                                 <Size>
@@ -459,7 +705,7 @@
                                 <Anchors>
                                     <Anchor point="TOPLEFT">
                                         <Offset>
-                                            <AbsDimension x="220" y="-135"/>
+                                            <AbsDimension x="240" y="-135"/>
                                         </Offset>
                                     </Anchor>
                                 </Anchors>
@@ -470,29 +716,7 @@
                                 </Scripts>
                             </CheckButton>
 
-                            <FontString name="$parentDPSLabel" inherits="GameFontNormal">
-                                <Anchors>
-                                    <Anchor point="TOPLEFT">
-                                        <Offset>
-                                            <AbsDimension x="245" y="-135"/>
-                                        </Offset>
-                                    </Anchor>
-                                </Anchors>
-                                <Text>DPS</Text>
-                            </FontString>
-
                             <!-- Details Input -->
-                            <FontString name="$parentDetailsLabel" inherits="GameFontNormal">
-                                <Anchors>
-                                    <Anchor point="TOPLEFT">
-                                        <Offset>
-                                            <AbsDimension x="20" y="-170"/>
-                                        </Offset>
-                                    </Anchor>
-                                </Anchors>
-                                <Text>Details:</Text>
-                            </FontString>
-
                             <EditBox name="$parentDescription" inherits="InputBoxTemplate">
                                 <Size>
                                     <AbsDimension x="340" y="25"/>
@@ -500,7 +724,7 @@
                                 <Anchors>
                                     <Anchor point="TOPLEFT">
                                         <Offset>
-                                            <AbsDimension x="20" y="-195"/>
+                                            <AbsDimension x="30" y="-195"/>
                                         </Offset>
                                     </Anchor>
                                 </Anchors>
@@ -541,17 +765,7 @@
                                 </Anchors>
                             </CheckButton>
 
-                            <FontString name="$parentMinLevelLabel" inherits="GameFontNormal">
-                                <Anchors>
-                                    <Anchor point="TOPLEFT">
-                                        <Offset>
-                                            <AbsDimension x="45" y="-235"/>
-                                        </Offset>
-                                    </Anchor>
-                                </Anchors>
-                                <Text>Min Level:</Text>
-                            </FontString>
-
+                            <!-- Min Level Input -->
                             <EditBox name="$parentMinLevelInput" inherits="InputBoxTemplate">
                                 <Size>
                                     <AbsDimension x="50" y="20"/>
@@ -580,22 +794,11 @@
                                 <Anchors>
                                     <Anchor point="TOPLEFT">
                                         <Offset>
-                                            <AbsDimension x="200" y="-235"/>
+                                            <AbsDimension x="20" y="-265"/>
                                         </Offset>
                                     </Anchor>
                                 </Anchors>
                             </CheckButton>
-
-                            <FontString name="$parentVoiceChatLabel" inherits="GameFontNormal">
-                                <Anchors>
-                                    <Anchor point="TOPLEFT">
-                                        <Offset>
-                                            <AbsDimension x="225" y="-235"/>
-                                        </Offset>
-                                    </Anchor>
-                                </Anchors>
-                                <Text>Voice Chat</Text>
-                            </FontString>
 
                             <!-- Voice Chat Input -->
                             <EditBox name="$parentVoiceChatInput" inherits="InputBoxTemplate">
@@ -605,13 +808,13 @@
                                 <Anchors>
                                     <Anchor point="TOPLEFT">
                                         <Offset>
-                                            <AbsDimension x="20" y="-265"/>
+                                            <AbsDimension x="120" y="-265"/>
                                         </Offset>
                                     </Anchor>
                                 </Anchors>
                                 <Scripts>
                                     <OnLoad>
-                                        this:SetText("Discord/TS server...");
+                                        this:SetText("Discord/TS...");
                                         this:SetTextColor(0.7, 0.7, 0.7, 1);
                                     </OnLoad>
                                     <OnEditFocusGained>
@@ -622,14 +825,14 @@
                                     </OnEditFocusGained>
                                     <OnEditFocusLost>
                                         if this:GetText() == "" then
-                                            this:SetText("Discord/TS server...");
+                                            this:SetText("Discord/TS...");
                                             this:SetTextColor(0.7, 0.7, 0.7, 1);
                                         end
                                     </OnEditFocusLost>
                                 </Scripts>
                             </EditBox>
 
-                            <!-- Action Buttons -->
+                            <!-- Back Button -->
                             <Button name="$parentBackButton" inherits="UIPanelButtonTemplate" text="Back">
                                 <Size>
                                     <AbsDimension x="80" y="25"/>
@@ -648,6 +851,7 @@
                                 </Scripts>
                             </Button>
 
+                            <!-- Create Group Button -->
                             <Button name="$parentCreateButton" inherits="UIPanelButtonTemplate" text="Create Group">
                                 <Size>
                                     <AbsDimension x="110" y="25"/>
@@ -666,8 +870,24 @@
                                 </Scripts>
                             </Button>
                         </Frames>
+                        
+                        <Scripts>
+                            <OnLoad>
+                                -- Set texture paths for role icons using proper WoW 1.12 paths
+                                if GroupFinderFrameRightPanelCreateViewTankIcon then
+                                    GroupFinderFrameRightPanelCreateViewTankIcon:SetTexture("Interface\\Icons\\Ability_Defend");
+                                end
+                                if GroupFinderFrameRightPanelCreateViewHealerIcon then
+                                    GroupFinderFrameRightPanelCreateViewHealerIcon:SetTexture("Interface\\Icons\\Spell_Holy_Heal");
+                                end
+                                if GroupFinderFrameRightPanelCreateViewDPSIcon then
+                                    GroupFinderFrameRightPanelCreateViewDPSIcon:SetTexture("Interface\\Icons\\Ability_DualWield");
+                                end
+                            </OnLoad>
+                        </Scripts>
                     </Frame>
                 </Frames>
+                
                 <Scripts>
                     <OnLoad>
                         this:SetBackdropColor(0.1, 0.1, 0.1, 0.8);
@@ -676,6 +896,7 @@
                 </Scripts>
             </Frame>
         </Frames>
+        
         <Scripts>
             <OnLoad>
                 GroupFinder_OnLoad(this);
@@ -708,19 +929,167 @@
             <TileSize val="32"/>
             <EdgeSize val="32"/>
         </Backdrop>
-        <Frames>
-            <!-- Title -->
-            <FontString name="$parentTitle" inherits="GameFontNormalLarge">
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="175" y="-15"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Text>Create Group</Text>
-            </FontString>
+        
+        <Layers>
+            <Layer level="OVERLAY">
+                <!-- Title -->
+                <FontString name="$parentTitle" inherits="GameFontNormalLarge">
+                    <Size>
+                        <AbsDimension x="150" y="20"/>
+                    </Size>
+                    <FontHeight>
+                        <AbsValue val="16"/>
+                    </FontHeight>
+                    <Anchors>
+                        <Anchor point="TOPLEFT">
+                            <Offset>
+                                <AbsDimension x="175" y="-15"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                    <Text>Create Group</Text>
+                </FontString>
+
+                <!-- Instance Display - FIXED with proper FontString structure -->
+                <FontString name="$parentInstanceDisplay" inherits="GameFontHighlight">
+                    <Size>
+                        <AbsDimension x="300" y="16"/>
+                    </Size>
+                    <FontHeight>
+                        <AbsValue val="12"/>
+                    </FontHeight>
+                    <Anchors>
+                        <Anchor point="TOPLEFT">
+                            <Offset>
+                                <AbsDimension x="25" y="-50"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                    <Text>The Deadmines (17-26 - Dungeon)</Text>
+                </FontString>
+
+                <!-- Roles Label -->
+                <FontString name="$parentRolesLabel" inherits="GameFontNormal">
+                    <Size>
+                        <AbsDimension x="120" y="16"/>
+                    </Size>
+                    <FontHeight>
+                        <AbsValue val="12"/>
+                    </FontHeight>
+                    <Anchors>
+                        <Anchor point="TOPLEFT">
+                            <Offset>
+                                <AbsDimension x="25" y="-85"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                    <Text>Roles Needed:</Text>
+                </FontString>
+
+                <!-- Tank Label -->
+                <FontString name="$parentTankLabel" inherits="GameFontNormal">
+                    <Size>
+                        <AbsDimension x="50" y="16"/>
+                    </Size>
+                    <FontHeight>
+                        <AbsValue val="12"/>
+                    </FontHeight>
+                    <Anchors>
+                        <Anchor point="TOPLEFT">
+                            <Offset>
+                                <AbsDimension x="70" y="-110"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                    <Text>Tank</Text>
+                </FontString>
+
+                <!-- Healer Label -->
+                <FontString name="$parentHealerLabel" inherits="GameFontNormal">
+                    <Size>
+                        <AbsDimension x="60" y="16"/>
+                    </Size>
+                    <FontHeight>
+                        <AbsValue val="12"/>
+                    </FontHeight>
+                    <Anchors>
+                        <Anchor point="TOPLEFT">
+                            <Offset>
+                                <AbsDimension x="165" y="-110"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                    <Text>Healer</Text>
+                </FontString>
+
+                <!-- DPS Label -->
+                <FontString name="$parentDPSLabel" inherits="GameFontNormal">
+                    <Size>
+                        <AbsDimension x="40" y="16"/>
+                    </Size>
+                    <FontHeight>
+                        <AbsValue val="12"/>
+                    </FontHeight>
+                    <Anchors>
+                        <Anchor point="TOPLEFT">
+                            <Offset>
+                                <AbsDimension x="265" y="-110"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                    <Text>DPS</Text>
+                </FontString>
+            </Layer>
             
+            <Layer level="ARTWORK">
+                <!-- Tank Icon - FIXED with proper Texture in ARTWORK layer -->
+                <Texture name="$parentTankIcon">
+                    <Size>
+                        <AbsDimension x="16" y="16"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="TOPLEFT">
+                            <Offset>
+                                <AbsDimension x="50" y="-108"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                    <TexCoords left="0" right="1" top="0" bottom="1"/>
+                </Texture>
+
+                <!-- Healer Icon - FIXED with proper Texture in ARTWORK layer -->
+                <Texture name="$parentHealerIcon">
+                    <Size>
+                        <AbsDimension x="16" y="16"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="TOPLEFT">
+                            <Offset>
+                                <AbsDimension x="145" y="-108"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                    <TexCoords left="0" right="1" top="0" bottom="1"/>
+                </Texture>
+
+                <!-- DPS Icon - FIXED with proper Texture in ARTWORK layer -->
+                <Texture name="$parentDPSIcon">
+                    <Size>
+                        <AbsDimension x="16" y="16"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="TOPLEFT">
+                            <Offset>
+                                <AbsDimension x="245" y="-108"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                    <TexCoords left="0" right="1" top="0" bottom="1"/>
+                </Texture>
+            </Layer>
+        </Layers>
+        
+        <Frames>
             <!-- Close Button -->
             <Button name="$parentCloseButton" inherits="UIPanelCloseButton">
                 <Anchors>
@@ -736,18 +1105,6 @@
                     </OnClick>
                 </Scripts>
             </Button>
-
-            <!-- Instance Display -->
-            <FontString name="$parentInstanceDisplay" inherits="GameFontHighlight">
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="25" y="-50"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Text>The Deadmines (17-26 - Dungeon)</Text>
-            </FontString>
 
             <!-- Select Instance Button -->
             <Button name="$parentInstanceButton" inherits="UIPanelButtonTemplate" text="Select Instance">
@@ -768,18 +1125,6 @@
                 </Scripts>
             </Button>
 
-            <!-- Roles Label -->
-            <FontString name="$parentRolesLabel" inherits="GameFontNormal">
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="25" y="-85"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Text>Roles Needed:</Text>
-            </FontString>
-
             <!-- Tank Checkbox -->
             <CheckButton name="$parentTankCheck" inherits="OptionsCheckButtonTemplate">
                 <Size>
@@ -798,18 +1143,6 @@
                     </OnLoad>
                 </Scripts>
             </CheckButton>
-
-            <!-- Tank Label -->
-            <FontString name="$parentTankLabel" inherits="GameFontNormal">
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="50" y="-110"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Text>Tank</Text>
-            </FontString>
 
             <!-- Healer Checkbox -->
             <CheckButton name="$parentHealerCheck" inherits="OptionsCheckButtonTemplate">
@@ -830,18 +1163,6 @@
                 </Scripts>
             </CheckButton>
 
-            <!-- Healer Label -->
-            <FontString name="$parentHealerLabel" inherits="GameFontNormal">
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="145" y="-110"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Text>Healer</Text>
-            </FontString>
-
             <!-- DPS Checkbox -->
             <CheckButton name="$parentDPSCheck" inherits="OptionsCheckButtonTemplate">
                 <Size>
@@ -860,18 +1181,6 @@
                     </OnLoad>
                 </Scripts>
             </CheckButton>
-
-            <!-- DPS Label -->
-            <FontString name="$parentDPSLabel" inherits="GameFontNormal">
-                <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="245" y="-110"/>
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <Text>DPS</Text>
-            </FontString>
 
             <!-- Description Input -->
             <EditBox name="$parentDescription" inherits="InputBoxTemplate">
@@ -946,9 +1255,20 @@
                 </Scripts>
             </Button>
         </Frames>
+        
         <Scripts>
             <OnLoad>
                 this:RegisterForDrag("LeftButton");
+                -- Set texture paths for role icons using proper WoW 1.12 paths
+                if GroupFinderCreateFrameTankIcon then
+                    GroupFinderCreateFrameTankIcon:SetTexture("Interface\\Icons\\Ability_Defend");
+                end
+                if GroupFinderCreateFrameHealerIcon then
+                    GroupFinderCreateFrameHealerIcon:SetTexture("Interface\\Icons\\Spell_Holy_Heal");
+                end
+                if GroupFinderCreateFrameDPSIcon then
+                    GroupFinderCreateFrameDPSIcon:SetTexture("Interface\\Icons\\Ability_DualWield");
+                end
             </OnLoad>
             <OnShow>
                 -- Force UI refresh when create frame becomes visible

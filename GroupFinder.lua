@@ -55,9 +55,22 @@ local INSTANCES = {
     ["Ruins of Ahn'Qiraj"] = { level = "60", type = "Raid", zone = "Silithus" },
     ["Naxxramas"] = { level = "60", type = "Raid", zone = "Eastern Plaguelands" },
 
+    -- PvP Battlegrounds
+    ["Warsong Gulch"] = { level = "10-19", type = "PvP", zone = "Ashenvale" },
+    ["Warsong Gulch"] = { level = "20-29", type = "PvP", zone = "Ashenvale" },
+    ["Warsong Gulch"] = { level = "30-39", type = "PvP", zone = "Ashenvale" },
+    ["Warsong Gulch"] = { level = "40-49", type = "PvP", zone = "Ashenvale" },
+    ["Warsong Gulch"] = { level = "50-59", type = "PvP", zone = "Ashenvale" },
+    ["Warsong Gulch"]= { level = "60", type = "PvP", zone = "Ashenvale" },
+    ["Arathi Basin"] = { level = "20-29", type = "PvP", zone = "Arathi Highlands" },
+    ["Arathi Basin"] = { level = "30-39", type = "PvP", zone = "Arathi Highlands" },
+    ["Arathi Basin"] = { level = "40-49", type = "PvP", zone = "Arathi Highlands" },
+    ["Arathi Basin"] = { level = "50-59", type = "PvP", zone = "Arathi Highlands" },
+    ["Arathi Basin"] = { level = "60", type = "PvP", zone = "Arathi Highlands" },
+    ["Alterac Valley"] = { level = "51-60", type = "PvP", zone = "Alterac Mountains" },
+
     -- Other activities
     ["PvP"] = { level = "Any", type = "PvP", zone = "Various" },
-    ["Questing"] = { level = "Any", type = "Questing", zone = "Various" },
     ["Other"] = { level = "Any", type = "Other", zone = "Various" }
 }
 
@@ -99,6 +112,7 @@ local function InitializePanelFrames()
     selectedTypeButtons.dungeon = GroupFinderFrameLeftPanelDungeonButton
     selectedTypeButtons.raid = GroupFinderFrameLeftPanelRaidButton
     selectedTypeButtons.pvp = GroupFinderFrameLeftPanelPvPButton
+    selectedTypeButtons.questing = GroupFinderFrameLeftPanelQuestingButton
     selectedTypeButtons.other = GroupFinderFrameLeftPanelOtherButton
     
     return true
@@ -127,6 +141,8 @@ local function UpdateTypeButtonStates()
         selectedButton = selectedTypeButtons.raid
     elseif currentInstanceType == "PvP" then
         selectedButton = selectedTypeButtons.pvp
+    elseif currentInstanceType == "Questing" then
+        selectedButton = selectedTypeButtons.questing
     elseif currentInstanceType == "Other" then
         selectedButton = selectedTypeButtons.other
     end
@@ -158,6 +174,16 @@ local function ShowCreateView()
     panelFrames.listView:Hide()
     panelFrames.createView:Show()
     
+    -- Set default instance based on current filter if none selected
+    if not selectedInstance or selectedInstance == "" then
+        local filteredInstances = GetInstanceListByType(currentInstanceType)
+        if filteredInstances and table.getn(filteredInstances) > 0 then
+            selectedInstance = filteredInstances[1]
+        else
+            selectedInstance = "The Deadmines"
+        end
+    end
+    
     -- Update instance display in create view
     GroupFinder_UpdateCreateViewInstanceDisplay()
 end
@@ -175,6 +201,17 @@ function GroupFinder_SetInstanceType(instanceType)
     
     -- Update create view if it's showing
     if currentView == "create" then
+        -- Set default instance based on current filter
+        if instanceType == "Questing" then
+            selectedInstance = "Questing"
+        elseif instanceType == "Other" then
+            selectedInstance = "Other Activity"
+        else
+            local filteredInstances = GetInstanceListByType(instanceType)
+            if filteredInstances and table.getn(filteredInstances) > 0 then
+                selectedInstance = filteredInstances[1]
+            end
+        end
         GroupFinder_UpdateCreateViewInstanceDisplay()
     end
     
@@ -297,20 +334,48 @@ function GroupFinder_UpdateCreateViewInstanceDisplay()
         return
     end
     
+    local instanceLabel = GroupFinderFrameRightPanelCreateViewInstanceLabel
     local instanceDisplay = GroupFinderFrameRightPanelCreateViewInstanceDisplay
-    if not instanceDisplay then
-        return
-    end
+    local instanceButton = GroupFinderFrameRightPanelCreateViewInstanceButton
+    local activityMessage = GroupFinderFrameRightPanelCreateViewActivityMessage
     
-    local instanceInfo = INSTANCES[selectedInstance]
-    local displayText
-    if instanceInfo then
-        displayText = selectedInstance .. " (" .. instanceInfo.level .. " - " .. instanceInfo.type .. ")"
+    -- Hide/show elements based on activity type
+    if currentInstanceType == "Questing" or currentInstanceType == "Other" then
+        -- Hide instance selection elements
+        if instanceLabel then instanceLabel:Hide() end
+        if instanceDisplay then instanceDisplay:Hide() end
+        if instanceButton then instanceButton:Hide() end
+        
+        -- Show activity message
+        if activityMessage then
+            activityMessage:Show()
+            if currentInstanceType == "Questing" then
+                activityMessage:SetText("Describe your questing activity in the description field")
+            else
+                activityMessage:SetText("Describe your activity in the description field")
+            end
+        end
     else
-        displayText = selectedInstance or "The Deadmines"
+        -- Show instance selection elements
+        if instanceLabel then instanceLabel:Show() end
+        if instanceDisplay then instanceDisplay:Show() end
+        if instanceButton then instanceButton:Show() end
+        
+        -- Hide activity message
+        if activityMessage then activityMessage:Hide() end
+        
+        -- Update instance display text
+        if instanceDisplay then
+            local instanceInfo = INSTANCES[selectedInstance]
+            local displayText
+            if instanceInfo then
+                displayText = selectedInstance .. " (" .. instanceInfo.level .. " - " .. instanceInfo.type .. ")"
+            else
+                displayText = selectedInstance or "The Deadmines"
+            end
+            instanceDisplay:SetText(displayText)
+        end
     end
-    
-    instanceDisplay:SetText(displayText)
 end
 
 -- Instance cycling
@@ -330,228 +395,12 @@ local function InitializeInstanceList()
     end
 end
 
--- Debug function to list all available UI elements
-local function DebugListFrameElements()
-    local prefix = "|cff00ffff[GroupFinder Debug]|r "
-    
-    if not GroupFinderCreateFrame then
-        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "GroupFinderCreateFrame is nil!")
-        return
-    end
-    
-    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "=== DEBUGGING FRAME ELEMENTS ===")
-    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "GroupFinderCreateFrame exists: " .. tostring(GroupFinderCreateFrame ~= nil))
-    
-    -- List all children
-    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "--- CHILDREN ---")
-    local children = { GroupFinderCreateFrame:GetChildren() }
-    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Found " .. table.getn(children) .. " children:")
-    for i, child in ipairs(children) do
-        if child then
-            local name = child:GetName() or "unnamed"
-            local objType = child:GetObjectType() or "unknown"
-            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Child " .. i .. ": " .. name .. " (" .. objType .. ")")
-        end
-    end
-    
-    -- List all regions
-    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "--- REGIONS ---")
-    local regions = { GroupFinderCreateFrame:GetRegions() }
-    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Found " .. table.getn(regions) .. " regions:")
-    for i, region in ipairs(regions) do
-        if region then
-            local name = region:GetName() or "unnamed"
-            local objType = region:GetObjectType() or "unknown"
-            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Region " .. i .. ": " .. name .. " (" .. objType .. ")")
-            if objType == "FontString" then
-                local text = region:GetText() or "no text"
-                DEFAULT_CHAT_FRAME:AddMessage(prefix .. "  Text: '" .. text .. "'")
-            end
-        end
-    end
-    
-    -- Test specific global names
-    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "--- GLOBAL NAME TESTS ---")
-    local testNames = {
-        "GroupFinderCreateFrameInstanceDisplay",
-        "GroupFinderCreateFrame_InstanceDisplay",
-        "GroupFinderCreateFrameTitle",
-        "GroupFinderCreateFrameInstanceButton"
-    }
-    
-    for _, name in ipairs(testNames) do
-        local element = getglobal and getglobal(name) or nil
-        DEFAULT_CHAT_FRAME:AddMessage(prefix .. name .. ": " .. tostring(element ~= nil))
-    end
-    
-    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "=== END DEBUG ===")
-end
 
--- Enhanced UpdateInstanceDisplay with robust element validation and retry mechanism
-local function UpdateInstanceDisplay(retryCount)
-    local prefix = "|cff00ffff[GroupFinder Debug]|r "
-    retryCount = retryCount or 0
-    local maxRetries = 3
-    
-    -- Debug: Log the update attempt
-    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "UpdateInstanceDisplay() called (attempt " .. (retryCount + 1) .. ") - selectedInstance: " .. (selectedInstance or "nil"))
-    
+-- Simplified UpdateInstanceDisplay function
+local function UpdateInstanceDisplay()
     -- Validate selectedInstance
     if not selectedInstance or selectedInstance == "" then
         selectedInstance = "The Deadmines"
-        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "No selectedInstance, defaulting to: " .. selectedInstance)
-    end
-    
-    -- Try multiple methods to find the UI element (WoW 1.12 compatibility)
-    local instanceDisplayElement = nil
-    
-    -- Method 1: Direct reference
-    if GroupFinderCreateFrameInstanceDisplay then
-        instanceDisplayElement = GroupFinderCreateFrameInstanceDisplay
-        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Found element via direct reference")
-    -- Method 2: getglobal fallback
-    elseif getglobal and getglobal("GroupFinderCreateFrameInstanceDisplay") then
-        instanceDisplayElement = getglobal("GroupFinderCreateFrameInstanceDisplay")
-        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Found element via getglobal")
-    -- Method 3: Manual traversal through frame hierarchy
-    elseif GroupFinderCreateFrame then
-        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Searching for element via frame traversal...")
-        -- Check if we can find it as a child of GroupFinderCreateFrame
-        local children = { GroupFinderCreateFrame:GetChildren() }
-        for i, child in ipairs(children) do
-            if child and child:GetObjectType() == "FontString" then
-                local childName = child:GetName()
-                if childName and string.find(childName, "InstanceDisplay") then
-                    instanceDisplayElement = child
-                    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Found element via traversal: " .. childName)
-                    break
-                end
-            end
-        end
-        
-        -- Alternative: try to find by regions
-        if not instanceDisplayElement then
-            local regions = { GroupFinderCreateFrame:GetRegions() }
-            for i, region in ipairs(regions) do
-                if region and region:GetObjectType() == "FontString" then
-                    local regionName = region:GetName()
-                    if regionName and string.find(regionName, "InstanceDisplay") then
-                        instanceDisplayElement = region
-                        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Found element via regions: " .. regionName)
-                        break
-                    end
-                end
-            end
-        end
-        
-        -- Method 4: Find by text content (looking for default text)
-        if not instanceDisplayElement then
-            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Searching by text content...")
-            local regions = { GroupFinderCreateFrame:GetRegions() }
-            for i, region in ipairs(regions) do
-                if region and region:GetObjectType() == "FontString" then
-                    local text = region:GetText()
-                    if text and (string.find(text, "Deadmines") or string.find(text, "Dungeon") or string.find(text, "17-26")) then
-                        instanceDisplayElement = region
-                        local regionName = region:GetName() or "unnamed"
-                        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Found element by text content: " .. regionName .. " (text: '" .. text .. "')")
-                        break
-                    end
-                end
-            end
-        end
-    end
-    
-    -- Check if we found the element
-    if not instanceDisplayElement then
-        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "ERROR: Could not find InstanceDisplay element through any method!")
-        
-        -- Run debug listing on first failure
-        if retryCount == 0 then
-            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Running comprehensive debug listing...")
-            DebugListFrameElements()
-        end
-        
-        -- Method 5: Create element programmatically if it doesn't exist and we have the frame
-        if GroupFinderCreateFrame and retryCount == 1 then
-            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Attempting to create element programmatically...")
-            
-            local success, newElement = pcall(function()
-                local fontString = GroupFinderCreateFrame:CreateFontString("GroupFinderCreateFrameInstanceDisplay", "OVERLAY", "GameFontHighlight")
-                fontString:SetPoint("TOPLEFT", GroupFinderCreateFrame, "TOPLEFT", 25, -50)
-                fontString:SetText("The Deadmines (17-26 - Dungeon)")
-                return fontString
-            end)
-            
-            if success and newElement then
-                instanceDisplayElement = newElement
-                DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Successfully created element programmatically")
-                -- Set global reference for future use
-                GroupFinderCreateFrameInstanceDisplay = newElement
-            else
-                DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Failed to create element programmatically")
-            end
-        end
-        
-        -- If still no element, retry or give up
-        if not instanceDisplayElement then
-            if retryCount < maxRetries then
-                DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Retrying in 0.1 seconds...")
-                local retryFrame = CreateFrame("Frame")
-                local retryTimer = 0
-                retryFrame:SetScript("OnUpdate", function(self, elapsed)
-                    retryTimer = retryTimer + elapsed
-                    if retryTimer >= 0.1 then
-                        retryFrame:SetScript("OnUpdate", nil)
-                        UpdateInstanceDisplay(retryCount + 1)
-                    end
-                end)
-                return false
-            else
-                DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Max retries reached, element not available")
-                return false
-            end
-        end
-    end
-    
-    -- Check if element is properly accessible and the frame is shown
-    local success, error = pcall(function()
-        -- Verify the parent frame is shown
-        if not GroupFinderCreateFrame:IsShown() then
-            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Parent frame not shown!")
-            return
-        end
-        
-        -- Test element accessibility using the found element
-        local testText = instanceDisplayElement:GetText()
-        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Current display text: " .. (testText or "nil"))
-        
-        -- Verify element is actually ready for updates
-        local width = instanceDisplayElement:GetWidth()
-        if width == 0 then
-            error("Element not fully initialized (width=0)")
-        end
-    end)
-    
-    if not success then
-        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "ERROR: Cannot access InstanceDisplay element: " .. (error or "unknown"))
-        
-        -- Retry mechanism for element accessibility
-        if retryCount < maxRetries then
-            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Element exists but not accessible, retrying...")
-            local retryFrame = CreateFrame("Frame")
-            local retryTimer = 0
-            retryFrame:SetScript("OnUpdate", function(self, elapsed)
-                retryTimer = retryTimer + elapsed
-                if retryTimer >= 0.1 then
-                    retryFrame:SetScript("OnUpdate", nil)
-                    UpdateInstanceDisplay(retryCount + 1)
-                end
-            end)
-            return false
-        else
-            return false
-        end
     end
     
     -- Prepare display text
@@ -563,39 +412,37 @@ local function UpdateInstanceDisplay(retryCount)
         displayText = selectedInstance or "The Deadmines"
     end
     
-    -- Attempt to update the display using the found element
-    success, error = pcall(function()
-        instanceDisplayElement:SetText(displayText)
-        -- Force a refresh of the element
-        instanceDisplayElement:Show()
-    end)
-    
-    if success then
-        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Successfully updated display to: " .. displayText)
+    -- Try to update new UI first
+    if GroupFinderFrameRightPanelCreateViewInstanceDisplay then
+        GroupFinderFrameRightPanelCreateViewInstanceDisplay:SetText(displayText)
         return true
-    else
-        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "ERROR: Failed to set text: " .. (error or "unknown"))
+    end
+    
+    -- Fallback to legacy UI
+    if GroupFinderCreateFrameInstanceDisplay then
+        GroupFinderCreateFrameInstanceDisplay:SetText(displayText)
+        return true
+    end
+    
+    -- If neither element exists, create the legacy one programmatically
+    if GroupFinderCreateFrame then
+        local success, newElement = pcall(function()
+            local fontString = GroupFinderCreateFrame:CreateFontString("GroupFinderCreateFrameInstanceDisplay", "OVERLAY", "GameFontHighlight")
+            fontString:SetPoint("TOPLEFT", GroupFinderCreateFrame, "TOPLEFT", 25, -50)
+            fontString:SetText(displayText)
+            return fontString
+        end)
         
-        -- Final retry for text setting
-        if retryCount < maxRetries then
-            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Retrying text update...")
-            local retryFrame = CreateFrame("Frame")
-            local retryTimer = 0
-            retryFrame:SetScript("OnUpdate", function(self, elapsed)
-                retryTimer = retryTimer + elapsed
-                if retryTimer >= 0.1 then
-                    retryFrame:SetScript("OnUpdate", nil)
-                    UpdateInstanceDisplay(retryCount + 1)
-                end
-            end)
-            return false
-        else
-            return false
+        if success and newElement then
+            GroupFinderCreateFrameInstanceDisplay = newElement
+            return true
         end
     end
+    
+    return false
 end
 
--- Simple cycle function for instance selection with enhanced UI update
+-- Simple cycle function for instance selection
 function GroupFinder_CycleInstance()
     local instances = GetInstanceList()
     if not instances or table.getn(instances) == 0 then
@@ -619,14 +466,8 @@ function GroupFinder_CycleInstance()
     
     selectedInstance = instances[currentIndex]
     
-    -- Use enhanced UpdateInstanceDisplay with debug info
-    local prefix = "|cff00ffff[GroupFinder Debug]|r "
-    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "CycleInstance: Selected " .. selectedInstance)
-    
-    local updateSuccess = UpdateInstanceDisplay()
-    if not updateSuccess then
-        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "CycleInstance: UI update failed, will retry on next frame show")
-    end
+    -- Update display
+    UpdateInstanceDisplay()
     
     local instanceInfo = INSTANCES[selectedInstance]
     local userPrefix = "|cff00ff00[GroupFinder]|r "
@@ -638,6 +479,23 @@ function GroupFinder_CycleInstance()
 end
 
 function GroupFinder_ShowInstanceDropdown()
+    -- Check if current instance type is "Questing" or "Other" - don't show dropdown
+    if currentInstanceType == "Questing" or currentInstanceType == "Other" then
+        local prefix = "|cff00ff00[GroupFinder]|r "
+        if currentInstanceType == "Questing" then
+            selectedInstance = "Questing Activity"
+            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "For questing activities, describe your activity in the description field.")
+        else
+            selectedInstance = "Other Activity"
+            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "For other activities, describe your activity in the description field.")
+        end
+        
+        -- Update the display
+        UpdateInstanceDisplay()
+        GroupFinder_UpdateCreateViewInstanceDisplay()
+        return
+    end
+    
     -- Hide any existing dropdown first
     if GroupFinderInstanceSelector then
         GroupFinderInstanceSelector:Hide()
@@ -672,8 +530,8 @@ function GroupFinder_ShowInstanceDropdown()
     closeBtn:SetPushedTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Down")
     closeBtn:SetScript("OnClick", function() dropdown:Hide() end)
     
-    -- Get all instances sorted by level
-    local instances = GetInstanceList()
+    -- Get filtered instances based on current instance type
+    local instances = GetInstanceListByType(currentInstanceType)
     local yOffset = 50
     local buttonHeight = 20
     
@@ -717,19 +575,19 @@ function GroupFinder_ShowInstanceDropdown()
             
             -- Button events
             button:SetScript("OnClick", function()
-                local prefix = "|cff00ffff[GroupFinder Debug]|r "
                 local clickedInstance = button.instanceName
-                
-                -- Debug logging with nil safety
-                local instanceName = clickedInstance or "unknown"
-                DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Instance selection clicked: " .. instanceName)
                 
                 if clickedInstance then
                     selectedInstance = clickedInstance
-                    local updateSuccess = UpdateInstanceDisplay()
-                    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Instance selection UpdateInstanceDisplay() returned: " .. tostring(updateSuccess))
-                else
-                    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "ERROR: Instance is nil!")
+                    UpdateInstanceDisplay()
+                    
+                    local instanceInfo = INSTANCES[selectedInstance]
+                    local userPrefix = "|cff00ff00[GroupFinder]|r "
+                    if instanceInfo then
+                        DEFAULT_CHAT_FRAME:AddMessage(userPrefix .. "Selected: " .. selectedInstance .. " (" .. instanceInfo.level .. " - " .. instanceInfo.type .. ")")
+                    else
+                        DEFAULT_CHAT_FRAME:AddMessage(userPrefix .. "Selected: " .. selectedInstance)
+                    end
                 end
                 dropdown:Hide()
             end)
@@ -1157,42 +1015,12 @@ function GroupFinder_CreateGroupWindow()
     end
     
     -- Fallback to legacy UI
-    local prefix = "|cff00ffff[GroupFinder Debug]|r "
-    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Using legacy create group window")
-    
-    -- Validate frame exists
     if not GroupFinderCreateFrame then
-        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "ERROR: GroupFinderCreateFrame is nil!")
         return
     end
     
     GroupFinderCreateFrame:Show()
-    
-    -- Use delayed update mechanism to ensure UI elements are ready
-    local delayFrame = CreateFrame("Frame")
-    local delayTimer = 0
-    
-    delayFrame:SetScript("OnUpdate", function(self, elapsed)
-        delayTimer = delayTimer + elapsed
-        
-        if delayTimer >= 0.05 then
-            delayFrame:SetScript("OnUpdate", nil)
-            local updateSuccess = UpdateInstanceDisplay()
-            if not updateSuccess then
-                local secondDelayFrame = CreateFrame("Frame")
-                local secondDelayTimer = 0
-                
-                secondDelayFrame:SetScript("OnUpdate", function(self, elapsed)
-                    secondDelayTimer = secondDelayTimer + elapsed
-                    
-                    if secondDelayTimer >= 0.1 then
-                        secondDelayFrame:SetScript("OnUpdate", nil)
-                        UpdateInstanceDisplay()
-                    end
-                end)
-            end
-        end
-    end)
+    UpdateInstanceDisplay()
 end
 
 -- Edit and Delete functions for own groups
