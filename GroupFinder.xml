@@ -322,103 +322,15 @@
                                     </Anchors>
                                 </FontString>
 
-                                <!-- Tank Filter Label -->
-                                <FontString name="$parentTankFilterLabel" inherits="GameFontNormalSmall" text="T">
-                                    <Size>
-                                        <AbsDimension x="15" y="12"/>
-                                    </Size>
-                                    <FontHeight>
-                                        <AbsValue val="10"/>
-                                    </FontHeight>
-                                    <Anchors>
-                                        <Anchor point="TOPLEFT">
-                                            <Offset>
-                                                <AbsDimension x="265" y="-37"/>
-                                            </Offset>
-                                        </Anchor>
-                                    </Anchors>
-                                </FontString>
+                                <!-- These labels are now part of the CheckButtons -->
 
-                                <!-- Healer Filter Label -->
-                                <FontString name="$parentHealerFilterLabel" inherits="GameFontNormalSmall" text="H">
-                                    <Size>
-                                        <AbsDimension x="15" y="12"/>
-                                    </Size>
-                                    <FontHeight>
-                                        <AbsValue val="10"/>
-                                    </FontHeight>
-                                    <Anchors>
-                                        <Anchor point="TOPLEFT">
-                                            <Offset>
-                                                <AbsDimension x="305" y="-37"/>
-                                            </Offset>
-                                        </Anchor>
-                                    </Anchors>
-                                </FontString>
 
-                                <!-- DPS Filter Label -->
-                                <FontString name="$parentDPSFilterLabel" inherits="GameFontNormalSmall" text="D">
-                                    <Size>
-                                        <AbsDimension x="15" y="12"/>
-                                    </Size>
-                                    <FontHeight>
-                                        <AbsValue val="10"/>
-                                    </FontHeight>
-                                    <Anchors>
-                                        <Anchor point="TOPLEFT">
-                                            <Offset>
-                                                <AbsDimension x="345" y="-37"/>
-                                            </Offset>
-                                        </Anchor>
-                                    </Anchors>
-                                </FontString>
                             </Layer>
 
                             <Layer level="ARTWORK">
-                                <!-- Tank Filter Icon -->
-                                <Texture name="$parentTankFilterIcon">
-                                    <Size>
-                                        <AbsDimension x="16" y="16"/>
-                                    </Size>
-                                    <Anchors>
-                                        <Anchor point="TOPLEFT">
-                                            <Offset>
-                                                <AbsDimension x="245" y="-35"/>
-                                            </Offset>
-                                        </Anchor>
-                                    </Anchors>
-                                    <TexCoords left="0" right="1" top="0" bottom="1"/>
-                                </Texture>
+                                <!-- Icons are now part of the CheckButtons -->
 
-                                <!-- Healer Filter Icon -->
-                                <Texture name="$parentHealerFilterIcon">
-                                    <Size>
-                                        <AbsDimension x="16" y="16"/>
-                                    </Size>
-                                    <Anchors>
-                                        <Anchor point="TOPLEFT">
-                                            <Offset>
-                                                <AbsDimension x="285" y="-35"/>
-                                            </Offset>
-                                        </Anchor>
-                                    </Anchors>
-                                    <TexCoords left="0" right="1" top="0" bottom="1"/>
-                                </Texture>
 
-                                <!-- DPS Filter Icon -->
-                                <Texture name="$parentDPSFilterIcon">
-                                    <Size>
-                                        <AbsDimension x="16" y="16"/>
-                                    </Size>
-                                    <Anchors>
-                                        <Anchor point="TOPLEFT">
-                                            <Offset>
-                                                <AbsDimension x="325" y="-35"/>
-                                            </Offset>
-                                        </Anchor>
-                                    </Anchors>
-                                    <TexCoords left="0" right="1" top="0" bottom="1"/>
-                                </Texture>
                             </Layer>
                         </Layers>
                         
@@ -474,69 +386,54 @@
                             </EditBox>
 
                             <!-- Tank Filter Checkbox -->
-                            <CheckButton name="$parentTankFilter" inherits="OptionsCheckButtonTemplate">
+                           <CheckButton name="$parentTankFilter" inherits="OptionsCheckButtonTemplate">
                                 <Size>
-                                    <AbsDimension x="16" y="16"/>
+                                    <AbsDimension x="24" y="24"/>
                                 </Size>
                                 <Anchors>
-                                    <Anchor point="TOPLEFT">
+                                    <Anchor point="TOPLEFT" relativeTo="$parent" relativePoint="TOPLEFT">
                                         <Offset>
-                                            <AbsDimension x="245" y="-35"/>
+                                            <AbsDimension x="250" y="-35"/>
                                         </Offset>
                                     </Anchor>
                                 </Anchors>
-                                <Scripts>
-                                    <OnLoad>
-                                        this:SetChecked(false);
-                                    </OnLoad>
-                                    <OnClick>
-                                        GroupFinder_OnRoleFilterChanged();
-                                    </OnClick>
-                                </Scripts>
+                                <NormalTexture file="Interface\Icons\Ability_Defend"/>
+                                <PushedTexture file="Interface\Icons\Ability_Defend"/>
+                                <HighlightTexture file="Interface\Buttons\UI-Common-MouseHilight" alphaMode="ADD"/>
                             </CheckButton>
 
                             <!-- Healer Filter Checkbox -->
                             <CheckButton name="$parentHealerFilter" inherits="OptionsCheckButtonTemplate">
                                 <Size>
-                                    <AbsDimension x="16" y="16"/>
+                                    <AbsDimension x="24" y="24"/>
                                 </Size>
                                 <Anchors>
-                                    <Anchor point="TOPLEFT">
+                                    <Anchor point="LEFT" relativeTo="$parentTankFilter" relativePoint="RIGHT">
                                         <Offset>
-                                            <AbsDimension x="285" y="-35"/>
+                                            <AbsDimension x="5" y="0"/>
                                         </Offset>
                                     </Anchor>
                                 </Anchors>
-                                <Scripts>
-                                    <OnLoad>
-                                        this:SetChecked(false);
-                                    </OnLoad>
-                                    <OnClick>
-                                        GroupFinder_OnRoleFilterChanged();
-                                    </OnClick>
-                                </Scripts>
+                                <NormalTexture file="Interface\Icons\Spell_Holy_Heal"/>
+                                <PushedTexture file="Interface\Icons\Spell_Holy_Heal"/>
+                                <HighlightTexture file="Interface\Buttons\UI-Common-MouseHilight" alphaMode="ADD"/>
                             </CheckButton>
 
                             <!-- DPS Filter Checkbox -->
                             <CheckButton name="$parentDPSFilter" inherits="OptionsCheckButtonTemplate">
                                 <Size>
-                                    <AbsDimension x="16" y="16"/>
+                                    <AbsDimension x="24" y="24"/>
                                 </Size>
                                 <Anchors>
-                                    <Anchor point="TOPLEFT">
+                                    <Anchor point="LEFT" relativeTo="$parentHealerFilter" relativePoint="RIGHT">
                                         <Offset>
-                                            <AbsDimension x="325" y="-35"/>
+                                            <AbsDimension x="6" y="0"/>
                                         </Offset>
                                     </Anchor>
                                 </Anchors>
-                                <Scripts>
-                                    <OnLoad>
-                                        this:SetChecked(false);
-                                    </OnLoad>
-                                    <OnClick>
-                                        GroupFinder_OnRoleFilterChanged();
-                                    </OnClick>
-                                </Scripts>
+                                <NormalTexture file="Interface\Icons\Ability_Rogue_Eviscerate"/>
+                                <PushedTexture file="Interface\Icons\Ability_Rogue_Eviscerate"/>
+                                <HighlightTexture file="Interface\Buttons\UI-Common-MouseHilight" alphaMode="ADD"/>
                             </CheckButton>
 
                             <!-- Group List Scroll Frame -->
@@ -618,16 +515,7 @@
                         
                         <Scripts>
                             <OnLoad>
-                                -- Set texture paths for role filter icons using proper WoW 1.12 paths
-                                if GroupFinderFrameRightPanelListViewTankFilterIcon then
-                                    GroupFinderFrameRightPanelListViewTankFilterIcon:SetTexture("Interface\\Icons\\Ability_Defend");
-                                end
-                                if GroupFinderFrameRightPanelListViewHealerFilterIcon then
-                                    GroupFinderFrameRightPanelListViewHealerFilterIcon:SetTexture("Interface\\Icons\\Spell_Holy_Heal");
-                                end
-                                if GroupFinderFrameRightPanelListViewDPSFilterIcon then
-                                    GroupFinderFrameRightPanelListViewDPSFilterIcon:SetTexture("Interface\\Icons\\Ability_DualWield");
-                                end
+                                -- This script is no longer needed as icons are embedded in the CheckButtons
                             </OnLoad>
                         </Scripts>
                     </Frame>
