@@ -1,5 +1,5 @@
 -- GroupFinder Addon for WoW 1.12 (Vanilla)
--- Enhanced version with instance selection, filtering, and improved compatibility
+-- Enhanced version with dynamic panel UI system, instance selection, filtering, and improved compatibility
 
 -- Local variables
 local LFG_CHANNEL_NAME = "LookingForGroup"
@@ -8,9 +8,21 @@ local channelNumber = 4      -- Default to channel 4 (LFG)
 local updateTimer = 0
 local CLEANUP_INTERVAL = 300 -- 5 minutes
 local isInitialized = false
-local currentFilter = "All"
 local selectedInstance = "The Deadmines"
 local groupEditIndex = nil
+
+-- Dynamic Panel System Variables
+local currentView = "list"  -- "list" or "create"
+local currentInstanceType = "All"  -- Current selected instance type filter (unified with legacy currentFilter)
+local selectedTypeButtons = {}  -- Track which type button is selected
+local panelFrames = {}  -- Cache for panel frames
+
+-- Frame Pooling for Memory Optimization
+local framePool = {
+    groupButtons = {},  -- Pool of reusable group buttons
+    maxPoolSize = 20,   -- Maximum number of buttons to keep in pool
+    activeButtons = {}  -- Currently active buttons
+}
 
 -- Instance data for WoW Vanilla
 local INSTANCES = {
@@ -57,6 +69,248 @@ local function GetInstanceList()
     end
     table.sort(list, function(a, b) return a < b end)
     return list
+end
+
+-- Get filtered list of instances by type
+local function GetInstanceListByType(instanceType)
+    local list = {}
+    for instance, data in pairs(INSTANCES) do
+        if instanceType == "All" or data.type == instanceType then
+            table.insert(list, instance)
+        end
+    end
+    table.sort(list, function(a, b) return a < b end)
+    return list
+end
+
+-- Dynamic Panel Management Functions
+local function InitializePanelFrames()
+    if not GroupFinderFrame then
+        return false
+    end
+    
+    panelFrames.leftPanel = GroupFinderFrameLeftPanel
+    panelFrames.rightPanel = GroupFinderFrameRightPanel
+    panelFrames.listView = GroupFinderFrameRightPanelListView
+    panelFrames.createView = GroupFinderFrameRightPanelCreateView
+    
+    -- Initialize type buttons
+    selectedTypeButtons.all = GroupFinderFrameLeftPanelAllButton
+    selectedTypeButtons.dungeon = GroupFinderFrameLeftPanelDungeonButton
+    selectedTypeButtons.raid = GroupFinderFrameLeftPanelRaidButton
+    selectedTypeButtons.pvp = GroupFinderFrameLeftPanelPvPButton
+    selectedTypeButtons.other = GroupFinderFrameLeftPanelOtherButton
+    
+    return true
+end
+
+local function UpdateTypeButtonStates()
+    if not selectedTypeButtons.all then
+        return
+    end
+    
+    -- Reset all button states
+    for _, button in pairs(selectedTypeButtons) do
+        if button and button.SetNormalTexture then
+            button:SetNormalTexture("Interface\\Buttons\\UI-Panel-Button-Up")
+            button:SetPushedTexture("Interface\\Buttons\\UI-Panel-Button-Down")
+        end
+    end
+    
+    -- Highlight selected button
+    local selectedButton = nil
+    if currentInstanceType == "All" then
+        selectedButton = selectedTypeButtons.all
+    elseif currentInstanceType == "Dungeon" then
+        selectedButton = selectedTypeButtons.dungeon
+    elseif currentInstanceType == "Raid" then
+        selectedButton = selectedTypeButtons.raid
+    elseif currentInstanceType == "PvP" then
+        selectedButton = selectedTypeButtons.pvp
+    elseif currentInstanceType == "Other" then
+        selectedButton = selectedTypeButtons.other
+    end
+    
+    if selectedButton and selectedButton.SetNormalTexture then
+        selectedButton:SetNormalTexture("Interface\\Buttons\\UI-Panel-Button-Down")
+    end
+end
+
+local function ShowListView()
+    if not panelFrames.listView or not panelFrames.createView then
+        return
+    end
+    
+    currentView = "list"
+    panelFrames.listView:Show()
+    panelFrames.createView:Hide()
+    
+    -- Refresh the group list
+    GroupFinder_RefreshGroups()
+end
+
+local function ShowCreateView()
+    if not panelFrames.listView or not panelFrames.createView then
+        return
+    end
+    
+    currentView = "create"
+    panelFrames.listView:Hide()
+    panelFrames.createView:Show()
+    
+    -- Update instance display in create view
+    GroupFinder_UpdateCreateViewInstanceDisplay()
+end
+
+-- Instance Type Selection Functions
+function GroupFinder_SetInstanceType(instanceType)
+    currentInstanceType = instanceType
+    
+    UpdateTypeButtonStates()
+    
+    -- If we're in list view, refresh the groups
+    if currentView == "list" then
+        GroupFinder_RefreshGroups()
+    end
+    
+    -- Update create view if it's showing
+    if currentView == "create" then
+        GroupFinder_UpdateCreateViewInstanceDisplay()
+    end
+    
+    local prefix = "|cff00ff00[GroupFinder]|r "
+    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Instance type filter set to: " .. instanceType)
+end
+
+-- View Navigation Functions
+function GroupFinder_ShowListView()
+    ShowListView()
+end
+
+function GroupFinder_ShowCreateView()
+    ShowCreateView()
+end
+
+-- Main frame initialization for new panel system
+function GroupFinder_OnShow()
+    if not InitializePanelFrames() then
+        -- Fallback to old system if new panels not available
+        GroupFinder_RefreshGroups()
+        return
+    end
+    
+    -- Initialize the dynamic panel system
+    currentView = "list"
+    currentInstanceType = "All"
+    
+    UpdateTypeButtonStates()
+    ShowListView()
+end
+
+-- Frame Pooling Functions for Memory Optimization
+local function GetPooledButton(parent)
+    local button = nil
+    
+    -- Try to get a button from the pool
+    if table.getn(framePool.groupButtons) > 0 then
+        button = table.remove(framePool.groupButtons)
+        button:SetParent(parent)
+        button:ClearAllPoints()
+        button:Show()
+    else
+        -- Create new button if pool is empty
+        button = CreateFrame("Button", nil, parent)
+        button:SetWidth(320)
+        button:SetHeight(30)
+        
+        -- Set up backdrop
+        button:SetBackdrop({
+            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            tile = true,
+            tileSize = 8,
+            edgeSize = 8,
+            insets = { left = 1, right = 1, top = 1, bottom = 1 }
+        })
+    end
+    
+    -- Reset button state
+    button:SetBackdropColor(0.2, 0.2, 0.2, 0.8)
+    button:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
+    button:SetScript("OnClick", nil)
+    button:SetScript("OnEnter", nil)
+    button:SetScript("OnLeave", nil)
+    
+    table.insert(framePool.activeButtons, button)
+    return button
+end
+
+local function ReturnButtonToPool(button)
+    if not button then return end
+    
+    -- Clear all scripts and references
+    button:SetScript("OnClick", nil)
+    button:SetScript("OnEnter", nil)
+    button:SetScript("OnLeave", nil)
+    button:Hide()
+    button:SetParent(nil)
+    
+    -- Clear any child frames (edit/delete buttons)
+    local children = { button:GetChildren() }
+    for _, child in ipairs(children) do
+        if child then
+            child:Hide()
+            child:SetParent(nil)
+        end
+    end
+    
+    -- Clear font strings
+    local regions = { button:GetRegions() }
+    for _, region in ipairs(regions) do
+        if region and region:GetObjectType() == "FontString" then
+            region:SetText("")
+        end
+    end
+    
+    -- Return to pool if not full
+    if table.getn(framePool.groupButtons) < framePool.maxPoolSize then
+        table.insert(framePool.groupButtons, button)
+    end
+end
+
+local function ClearActiveButtons()
+    for _, button in ipairs(framePool.activeButtons) do
+        ReturnButtonToPool(button)
+    end
+    framePool.activeButtons = {}
+    
+    -- Also clear legacy groupButtons array
+    for _, button in ipairs(groupButtons) do
+        ReturnButtonToPool(button)
+    end
+    groupButtons = {}
+end
+
+-- Update instance display in create view
+function GroupFinder_UpdateCreateViewInstanceDisplay()
+    if not panelFrames.createView then
+        return
+    end
+    
+    local instanceDisplay = GroupFinderFrameRightPanelCreateViewInstanceDisplay
+    if not instanceDisplay then
+        return
+    end
+    
+    local instanceInfo = INSTANCES[selectedInstance]
+    local displayText
+    if instanceInfo then
+        displayText = selectedInstance .. " (" .. instanceInfo.level .. " - " .. instanceInfo.type .. ")"
+    else
+        displayText = selectedInstance or "The Deadmines"
+    end
+    
+    instanceDisplay:SetText(displayText)
 end
 
 -- Instance cycling
@@ -245,8 +499,8 @@ local function UpdateInstanceDisplay(retryCount)
                 DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Retrying in 0.1 seconds...")
                 local retryFrame = CreateFrame("Frame")
                 local retryTimer = 0
-                retryFrame:SetScript("OnUpdate", function()
-                    retryTimer = retryTimer + arg1
+                retryFrame:SetScript("OnUpdate", function(self, elapsed)
+                    retryTimer = retryTimer + elapsed
                     if retryTimer >= 0.1 then
                         retryFrame:SetScript("OnUpdate", nil)
                         UpdateInstanceDisplay(retryCount + 1)
@@ -287,8 +541,8 @@ local function UpdateInstanceDisplay(retryCount)
             DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Element exists but not accessible, retrying...")
             local retryFrame = CreateFrame("Frame")
             local retryTimer = 0
-            retryFrame:SetScript("OnUpdate", function()
-                retryTimer = retryTimer + arg1
+            retryFrame:SetScript("OnUpdate", function(self, elapsed)
+                retryTimer = retryTimer + elapsed
                 if retryTimer >= 0.1 then
                     retryFrame:SetScript("OnUpdate", nil)
                     UpdateInstanceDisplay(retryCount + 1)
@@ -327,8 +581,8 @@ local function UpdateInstanceDisplay(retryCount)
             DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Retrying text update...")
             local retryFrame = CreateFrame("Frame")
             local retryTimer = 0
-            retryFrame:SetScript("OnUpdate", function()
-                retryTimer = retryTimer + arg1
+            retryFrame:SetScript("OnUpdate", function(self, elapsed)
+                retryTimer = retryTimer + elapsed
                 if retryTimer >= 0.1 then
                     retryFrame:SetScript("OnUpdate", nil)
                     UpdateInstanceDisplay(retryCount + 1)
@@ -550,16 +804,16 @@ end
 
 -- Filter function
 local function ShouldShowGroup(group)
-    if currentFilter == "All" then
+    if currentInstanceType == "All" then
         return true
     end
 
     local instanceInfo = INSTANCES[group.activity]
     if instanceInfo then
-        return instanceInfo.type == currentFilter
+        return instanceInfo.type == currentInstanceType
     end
 
-    return currentFilter == "Other"
+    return currentInstanceType == "Other"
 end
 
 -- Channel management
@@ -662,28 +916,36 @@ local function AddGroup(activity, leader, roles, description)
     end
 end
 
--- Filter functions
+-- Filter functions (legacy compatibility)
 function GroupFinder_SetFilter(filterType)
-    currentFilter = filterType
+    currentInstanceType = filterType
     GroupFinder_RefreshGroups()
     PrintMessage("Filter set to: " .. filterType)
 end
 
--- UI Management
+-- UI Management - Updated for Dynamic Panel System with Frame Pooling
 function GroupFinder_RefreshGroups()
     if not isInitialized then
         return
     end
 
-    -- Clear existing buttons
-    for _, button in ipairs(groupButtons) do
-        button:Hide()
-        button:SetParent(nil)
-    end
-    groupButtons = {}
+    -- Clear existing buttons using frame pooling
+    ClearActiveButtons()
 
-    -- Get scroll frame
-    local scrollFrame = GroupFinderFrameScrollFrameList
+    -- Determine which scroll frame to use (new or legacy)
+    local scrollFrame = nil
+    local groupCountDisplay = nil
+    
+    if panelFrames.listView and currentView == "list" then
+        -- Use new dynamic panel system
+        scrollFrame = GroupFinderFrameRightPanelListViewScrollFrameList
+        groupCountDisplay = GroupFinderFrameRightPanelListViewGroupCount
+    else
+        -- Fallback to legacy system
+        scrollFrame = GroupFinderFrameScrollFrameList
+        groupCountDisplay = GroupFinderFrameGroupCount
+    end
+    
     if not scrollFrame then
         PrintMessage("Error: ScrollFrame not found", true)
         return
@@ -696,32 +958,17 @@ function GroupFinder_RefreshGroups()
 
     for i, group in ipairs(GroupFinderDB.groups) do
         if ShouldShowGroup(group) then
-            -- Get instance info first (fixes line 453 error)
+            -- Get instance info first
             local instanceInfo = INSTANCES[group.activity]
             local timeAgo = math.floor((GetTimeStamp() - group.timestamp) / 60)
             local timeText = timeAgo < 1 and "now" or timeAgo .. "m ago"
             local levelText = instanceInfo and ("(" .. instanceInfo.level .. ")") or ""
 
-            -- Create simple button without WoW template
-            local button = CreateFrame("Button", "GroupFinderButton" .. i, scrollFrame)
-            button:SetWidth(340)
-            button:SetHeight(30)
+            -- Get button from pool
+            local button = GetPooledButton(scrollFrame)
             button:SetPoint("TOPLEFT", 5, -offset)
 
-            -- Simple background
-            button:SetBackdrop({
-                bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-                edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-                tile = true,
-                tileSize = 8,
-                edgeSize = 8,
-                insets = { left = 1, right = 1, top = 1, bottom = 1 }
-            })
-            button:SetBackdropColor(0.2, 0.2, 0.2, 0.8)
-            button:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
-
             -- Format button text with instance info
-
             local buttonText = string.format("%s %s\n%s - %s (%s)",
                 group.activity,
                 levelText,
@@ -763,8 +1010,6 @@ function GroupFinder_RefreshGroups()
                 local groupLeader = group.leader
                 local groupActivity = group.activity
                 local groupTimestamp = group.timestamp
-                local groupRoles = group.roles
-                local groupDescription = group.description
 
                 editBtn:SetScript("OnClick", function()
                     -- Find the group by matching stored data
@@ -776,7 +1021,7 @@ function GroupFinder_RefreshGroups()
                         end
                     end
                     if currentIndex then
-                        GroupFinder_EditGroup(GroupFinderDB.groups[currentIndex], currentIndex)
+                        GroupFinder_EditGroupInNewUI(GroupFinderDB.groups[currentIndex], currentIndex)
                     else
                         local prefix = "|cffff0000[GroupFinder Error]|r "
                         DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Group no longer exists")
@@ -889,24 +1134,31 @@ function GroupFinder_RefreshGroups()
     end
 
     -- Update scroll frame content size
-    scrollFrame:SetHeight(math.max(offset, 400))
+    scrollFrame:SetHeight(math.max(offset, 350))
 
     -- Update group count display
-    if GroupFinderFrameGroupCount then
+    if groupCountDisplay then
         local totalGroups = table.getn(GroupFinderDB.groups)
-        if currentFilter == "All" then
-            GroupFinderFrameGroupCount:SetText("Groups found: " .. totalGroups)
+        if currentInstanceType == "All" then
+            groupCountDisplay:SetText("Groups found: " .. totalGroups)
         else
-            GroupFinderFrameGroupCount:SetText("Groups found: " ..
-                visibleGroups .. "/" .. totalGroups .. " (filtered: " .. currentFilter .. ")")
+            groupCountDisplay:SetText("Groups found: " ..
+                visibleGroups .. "/" .. totalGroups .. " (filtered: " .. currentInstanceType .. ")")
         end
     end
 end
 
--- Enhanced GroupFinder_CreateGroupWindow with proper timing and delayed UI updates
+-- Enhanced GroupFinder_CreateGroupWindow with new UI integration
 function GroupFinder_CreateGroupWindow()
+    -- Try to use new UI first
+    if panelFrames.createView and InitializePanelFrames() then
+        ShowCreateView()
+        return
+    end
+    
+    -- Fallback to legacy UI
     local prefix = "|cff00ffff[GroupFinder Debug]|r "
-    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "GroupFinder_CreateGroupWindow() called")
+    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Using legacy create group window")
     
     -- Validate frame exists
     if not GroupFinderCreateFrame then
@@ -914,45 +1166,30 @@ function GroupFinder_CreateGroupWindow()
         return
     end
     
-    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Showing GroupFinderCreateFrame...")
     GroupFinderCreateFrame:Show()
     
-    -- Run debug listing immediately after showing frame to see what's available
-    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Running immediate debug check after Show()...")
-    DebugListFrameElements()
-    
     -- Use delayed update mechanism to ensure UI elements are ready
-    -- This is crucial for WoW 1.12 where UI elements may not be immediately accessible after Show()
     local delayFrame = CreateFrame("Frame")
     local delayTimer = 0
     
-    delayFrame:SetScript("OnUpdate", function()
-        delayTimer = delayTimer + arg1
+    delayFrame:SetScript("OnUpdate", function(self, elapsed)
+        delayTimer = delayTimer + elapsed
         
-        -- First attempt at 0.05 seconds
         if delayTimer >= 0.05 then
             delayFrame:SetScript("OnUpdate", nil)
-            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Attempting delayed UI update...")
-            
             local updateSuccess = UpdateInstanceDisplay()
             if not updateSuccess then
-                -- If first attempt fails, schedule another attempt
-                DEFAULT_CHAT_FRAME:AddMessage(prefix .. "First delayed attempt failed, scheduling second attempt...")
-                
                 local secondDelayFrame = CreateFrame("Frame")
                 local secondDelayTimer = 0
                 
-                secondDelayFrame:SetScript("OnUpdate", function()
-                    secondDelayTimer = secondDelayTimer + arg1
+                secondDelayFrame:SetScript("OnUpdate", function(self, elapsed)
+                    secondDelayTimer = secondDelayTimer + elapsed
                     
                     if secondDelayTimer >= 0.1 then
                         secondDelayFrame:SetScript("OnUpdate", nil)
-                        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Second delayed attempt...")
                         UpdateInstanceDisplay()
                     end
                 end)
-            else
-                DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Delayed UI update successful!")
             end
         end
     end)
@@ -1010,6 +1247,60 @@ function GroupFinder_EditGroup(group, index)
     DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Editing your group. Modify and click Create Group to update.")
 end
 
+-- New UI Edit function
+function GroupFinder_EditGroupInNewUI(group, index)
+    if not group or not index then
+        local prefix = "|cffff0000[GroupFinder Error]|r "
+        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Invalid group data for editing")
+        return
+    end
+
+    if not GroupFinderDB.groups[index] then
+        local prefix = "|cffff0000[GroupFinder Error]|r "
+        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Group no longer exists")
+        return
+    end
+
+    local actualGroup = GroupFinderDB.groups[index]
+    if actualGroup.leader ~= UnitName("player") then
+        local prefix = "|cffff0000[GroupFinder Error]|r "
+        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "You can only edit your own groups")
+        return
+    end
+
+    -- Set the selected instance
+    selectedInstance = actualGroup.activity or "The Deadmines"
+    
+    -- Switch to create view
+    ShowCreateView()
+    
+    -- Parse roles and set checkboxes in new UI
+    local roles = actualGroup.roles or ""
+    local needTank = string.find(roles, "Tank") ~= nil
+    local needHealer = string.find(roles, "Healer") ~= nil
+    local needDPS = string.find(roles, "DPS") ~= nil
+    
+    if GroupFinderFrameRightPanelCreateViewTankCheck then
+        GroupFinderFrameRightPanelCreateViewTankCheck:SetChecked(needTank)
+    end
+    if GroupFinderFrameRightPanelCreateViewHealerCheck then
+        GroupFinderFrameRightPanelCreateViewHealerCheck:SetChecked(needHealer)
+    end
+    if GroupFinderFrameRightPanelCreateViewDPSCheck then
+        GroupFinderFrameRightPanelCreateViewDPSCheck:SetChecked(needDPS)
+    end
+    
+    if GroupFinderFrameRightPanelCreateViewDescription then
+        GroupFinderFrameRightPanelCreateViewDescription:SetText(actualGroup.description or "")
+    end
+
+    groupEditIndex = index
+    GroupFinder_UpdateCreateViewInstanceDisplay()
+    
+    local prefix = "|cff00ff00[GroupFinder]|r "
+    DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Editing your group. Modify and click Create Group to update.")
+end
+
 function GroupFinder_DeleteGroup(index)
     if not index or not GroupFinderDB.groups[index] then
         local prefix = "|cffff0000[GroupFinder Error]|r "
@@ -1038,17 +1329,40 @@ function GroupFinder_CreateGroup()
 
     -- Make sure we have a valid activity
     local activity = selectedInstance or "The Deadmines"
-    local descriptionRaw = GroupFinderCreateFrameDescription:GetText()
+    local descriptionRaw = ""
+    
+    -- Determine which UI we're using and get the description
+    if currentView == "create" and GroupFinderFrameRightPanelCreateViewDescription then
+        -- New UI
+        descriptionRaw = GroupFinderFrameRightPanelCreateViewDescription:GetText()
+    elseif GroupFinderCreateFrameDescription then
+        -- Legacy UI
+        descriptionRaw = GroupFinderCreateFrameDescription:GetText()
+    end
 
-    -- Build roles string from checkboxes
+    -- Build roles string from checkboxes (try new UI first, then legacy)
     local rolesNeeded = {}
-    if GroupFinderCreateFrameTankCheck and GroupFinderCreateFrameTankCheck:GetChecked() then
+    local tankCheck, healerCheck, dpsCheck
+    
+    if currentView == "create" then
+        -- New UI checkboxes
+        tankCheck = GroupFinderFrameRightPanelCreateViewTankCheck
+        healerCheck = GroupFinderFrameRightPanelCreateViewHealerCheck
+        dpsCheck = GroupFinderFrameRightPanelCreateViewDPSCheck
+    else
+        -- Legacy UI checkboxes
+        tankCheck = GroupFinderCreateFrameTankCheck
+        healerCheck = GroupFinderCreateFrameHealerCheck
+        dpsCheck = GroupFinderCreateFrameDPSCheck
+    end
+    
+    if tankCheck and tankCheck:GetChecked() then
         table.insert(rolesNeeded, "Tank")
     end
-    if GroupFinderCreateFrameHealerCheck and GroupFinderCreateFrameHealerCheck:GetChecked() then
+    if healerCheck and healerCheck:GetChecked() then
         table.insert(rolesNeeded, "Healer")
     end
-    if GroupFinderCreateFrameDPSCheck and GroupFinderCreateFrameDPSCheck:GetChecked() then
+    if dpsCheck and dpsCheck:GetChecked() then
         table.insert(rolesNeeded, "DPS")
     end
     
@@ -1061,7 +1375,7 @@ function GroupFinder_CreateGroup()
     
     -- Clean description (remove placeholder text)
     local description = descriptionRaw
-    if string.find(descriptionRaw, "e.g.,") then
+    if string.find(descriptionRaw, "e.g.,") or string.find(descriptionRaw, "Description:") then
         description = ""
     end
 
@@ -1076,7 +1390,13 @@ function GroupFinder_CreateGroup()
 
             groupEditIndex = nil -- Reset
             GroupFinder_RefreshGroups()
-            GroupFinderCreateFrame:Hide()
+            
+            -- Hide the appropriate frame
+            if currentView == "create" then
+                ShowListView()  -- Return to list view in new UI
+            else
+                GroupFinderCreateFrame:Hide()  -- Hide legacy frame
+            end
 
             local prefix = "|cff00ff00[GroupFinder]|r "
             DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Group updated successfully")
@@ -1123,7 +1443,12 @@ function GroupFinder_CreateGroup()
         AddGroup(activity, leader, roles, description or "")
         GroupFinder_RefreshGroups()
 
-        GroupFinderCreateFrame:Hide()
+        -- Hide the appropriate frame and return to list view
+        if currentView == "create" then
+            ShowListView()  -- Return to list view in new UI
+        else
+            GroupFinderCreateFrame:Hide()  -- Hide legacy frame
+        end
     else
         PrintMessage("Not connected to LFG channel. Trying to reconnect...", true)
         JoinLFGChannel()
@@ -1190,9 +1515,7 @@ end
 -- Event handling
 function GroupFinderFrame_OnEvent()
     if event == "CHAT_MSG_CHANNEL" then
-        local message = arg1
-        local sender = arg2
-        local channelName = arg9
+        local message, sender, _, _, _, _, _, _, channelName = arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9
 
         -- Check for LFG messages from any LFG-related channel
         if (channelName == LFG_CHANNEL_NAME or channelName == "LFG" or channelName == "4") and string.sub(message, 1, 4) == "LFG|" then
@@ -1220,8 +1543,67 @@ function GroupFinderFrame_OnEvent()
     end
 end
 
+-- WoW 1.12 Compatibility Validation
+local function ValidateWoW112Compatibility()
+    local issues = {}
+    
+    -- Check for required API functions
+    if not CreateFrame then
+        table.insert(issues, "CreateFrame function not available")
+    end
+    
+    if not UnitName then
+        table.insert(issues, "UnitName function not available")
+    end
+    
+    if not SendChatMessage then
+        table.insert(issues, "SendChatMessage function not available")
+    end
+    
+    -- Check for UI elements
+    if not UIParent then
+        table.insert(issues, "UIParent not available")
+    end
+    
+    -- Check for required templates
+    local testFrame = CreateFrame("Frame", "GroupFinderCompatTest", UIParent)
+    if testFrame then
+        local success, error = pcall(function()
+            local testButton = CreateFrame("Button", nil, testFrame, "UIPanelButtonTemplate")
+            if testButton then
+                testButton:Hide()
+                testButton:SetParent(nil)
+            end
+        end)
+        if not success then
+            table.insert(issues, "UIPanelButtonTemplate not available: " .. (error or "unknown"))
+        end
+        
+        testFrame:Hide()
+        testFrame:SetParent(nil)
+    end
+    
+    if table.getn(issues) > 0 then
+        local prefix = "|cffff0000[GroupFinder Compatibility Error]|r "
+        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "WoW 1.12 compatibility issues detected:")
+        for _, issue in ipairs(issues) do
+            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "- " .. issue)
+        end
+        return false
+    end
+    
+    return true
+end
+
 -- Main frame initialization
 function GroupFinder_OnLoad(self)
+    -- Validate WoW 1.12 compatibility
+    if not ValidateWoW112Compatibility() then
+        local prefix = "|cffff0000[GroupFinder Error]|r "
+        DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Addon disabled due to compatibility issues")
+        return
+    end
+    
     -- Early initialization attempt
     InitializeDB()
 
@@ -1247,12 +1629,21 @@ function GroupFinder_OnLoad(self)
             GroupFinder_ClearAllGroups()
         elseif mainCommand == "cleanup" then
             CleanupExpiredGroups()
+        elseif mainCommand == "debug" then
+            -- Debug command for testing new UI
+            local prefix = "|cff00ffff[GroupFinder Debug]|r "
+            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Current view: " .. currentView)
+            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Current instance type: " .. currentInstanceType)
+            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Panel frames initialized: " .. tostring(panelFrames.listView ~= nil))
+            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Active buttons: " .. table.getn(framePool.activeButtons))
+            DEFAULT_CHAT_FRAME:AddMessage(prefix .. "Pooled buttons: " .. table.getn(framePool.groupButtons))
         elseif mainCommand == "help" then
             PrintMessage("Commands:")
             PrintMessage("/groupfinder or /gf - Toggle main window")
             PrintMessage("/gf clear - Remove your own groups")
             PrintMessage("/gf clearall - Remove all groups")
             PrintMessage("/gf cleanup - Clean up expired groups")
+            PrintMessage("/gf debug - Show debug information")
             PrintMessage("/gf help - Show this help")
         else
             if GroupFinderFrame:IsShown() then
@@ -1266,7 +1657,8 @@ function GroupFinder_OnLoad(self)
     -- Setup update timer for cleanup
     local frame = CreateFrame("Frame")
     frame:SetScript("OnUpdate", function()
-        updateTimer = updateTimer + arg1
+        local elapsed = arg1 or 0
+        updateTimer = updateTimer + elapsed
         if updateTimer >= CLEANUP_INTERVAL then
             updateTimer = 0
             CleanupExpiredGroups()
@@ -1279,4 +1671,5 @@ function GroupFinder_OnLoad(self)
     end)
 
     PrintMessage("Loaded! Use /groupfinder or /gf to open. Type /gf help for commands.")
+    PrintMessage("New dynamic panel UI system enabled with memory optimization.")
 end
