@@ -6,6 +6,6 @@
 ## Version: 3.0
 ## DefaultState: enabled
 ## LoadOnDemand: 0
-GroupFinder.lua
-GroupFinderTests.lua
-GroupFinder.xml
+TurtleGroupFinder.lua
+TurtleGroupFinderTests.lua
+TurtleGroupFinder.xml
